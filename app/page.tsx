@@ -159,10 +159,36 @@ export default function Page() {
             )}
           </div>
         </div>
-        <div className={styles.heroCardWrap}>
-          <ControlCard onJoin={handleJoin} />
-          <ConnectionCard />
+        <div className={styles.heroVisual}>
+          <div className={styles.heroCardWrap}>
+            <ControlCard onJoin={handleJoin} />
+          </div>
+          <Image
+            src="/images/premium-hero.png"
+            alt="Futuristic Meeting Interface"
+            width={800}
+            height={450}
+            priority
+            className={styles.heroImg}
+          />
         </div>
+      </section>
+
+      <section className={styles.featureShowcase}>
+        <div className={styles.showcaseText}>
+          <h2>Analytics & Insights</h2>
+          <p>
+            Real-time sentiment analysis, speaker diarization, and live translation streams.
+            Visualize your meeting data with our premium dashboard.
+          </p>
+        </div>
+        <Image
+          src="/images/dashboard-feature.png"
+          alt="Analytics Dashboard"
+          width={1000}
+          height={600}
+          className={styles.showcaseImg}
+        />
       </section>
 
       <section className={styles.featuresGrid}>
