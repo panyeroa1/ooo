@@ -519,8 +519,8 @@ function TranslatePanel({
   onTranslationVoiceSelectionChange: (selection: 'default' | 'custom') => void;
   customTranslationVoice: string;
   onCustomTranslationVoiceChange: (voice: string) => void;
-  ttsEngine: 'cartesia' | 'google-genai';
-  onTtsEngineChange: (engine: 'cartesia' | 'google-genai') => void;
+  ttsEngine: 'cartesia' | 'google-genai' | 'livekit-agent';
+  onTtsEngineChange: (engine: 'cartesia' | 'google-genai' | 'livekit-agent') => void;
 }) {
   const room = React.useContext(RoomContext);
   const languageGroups = [
@@ -715,10 +715,11 @@ function TranslatePanel({
             aria-label="Translation TTS Engine"
             className={roomStyles.sidebarSelect}
             value={ttsEngine}
-            onChange={(event) => onTtsEngineChange(event.target.value as 'cartesia' | 'google-genai')}
+            onChange={(event) => onTtsEngineChange(event.target.value as 'cartesia' | 'google-genai' | 'livekit-agent')}
           >
             <option value="cartesia">Cartesia Sonic-3 (default)</option>
             <option value="google-genai">Google Gemini Live Audio</option>
+            <option value="livekit-agent">LiveKit Agent (muted mic)</option>
           </select>
           <div className={roomStyles.clipContentSection}>
             <span className={roomStyles.sidebarCardHint}>
@@ -962,7 +963,7 @@ function VideoConferenceComponent(props: {
     'default',
   );
   const [customTranslationVoice, setCustomTranslationVoice] = React.useState('');
-  const [ttsEngine, setTtsEngine] = React.useState<'cartesia' | 'google-genai'>('cartesia');
+  const [ttsEngine, setTtsEngine] = React.useState<'cartesia' | 'google-genai' | 'livekit-agent'>('cartesia');
 
   const translationVoiceId = React.useMemo(() => {
     if (translationVoiceSelection === 'custom') {

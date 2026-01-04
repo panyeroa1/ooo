@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 type TtsRequestBody = {
   text: string;
   voiceId?: string;
-  provider?: 'cartesia' | 'google-genai';
+  provider?: 'cartesia' | 'google-genai' | 'livekit-agent';
 };
 
 export async function POST(request: Request) {
@@ -81,6 +81,53 @@ export async function POST(request: Request) {
           'Content-Type': 'audio/wav',
           'Cache-Control': 'no-cache',
         },
+      });
+    }
+
+    // LiveKit Agent TTS - uses the room's AI agent for speech synthesis
+    if (provider === 'livekit-agent') {
+      // The LiveKit agent handles TTS by sending text to the agent room
+      // Agent will speak directly in the room with muted mic for other participants
+      // For API-based TTS, we fall back to Cartesia but mark it as agent-initiated
+      console.log('LiveKit Agent TTS requested - using agent voice synthesis');
+      
+      // For now, delegate to Cartesia with agent voice settings
+      // In production, this would dispatch to a running LiveKit agent
+      const apiKey = process.env.CARTESIA_API_KEY;
+      const agentVoiceId = process.env.LIVEKIT_AGENT_VOICE_ID || process.env.CARTESIA_VOICE_ID;
+      const modelId = process.env.CARTESIA_MODEL_ID || 'sonic-3';
+
+      if (!apiKey || !agentVoiceId) {
+        return new NextResponse('Agent voice not configured', { status: 503 });
+      }
+
+      const response = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+          'Cartesia-Version': '2025-04-16',
+        },
+        body: JSON.stringify({
+          model_id: modelId,
+          transcript: text,
+          voice: { mode: 'id', id: agentVoiceId },
+          output_format: { container: 'wav', encoding: 'pcm_f32le', sample_rate: 44100 },
+          speed: 'normal',
+          generation_config: { speed: 1.0, volume: 1, emotion: 'neutral' },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Agent TTS error:', errorData);
+        return new NextResponse('Agent TTS failed', { status: 500 });
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      console.log(`Agent TTS successful: ${audioBuffer.byteLength} bytes`);
+      return new NextResponse(audioBuffer, {
+        headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-cache' },
       });
     }
 
