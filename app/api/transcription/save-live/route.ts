@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+function splitIntoSentences(text: string): string[] {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return [];
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
+    return Array.from(segmenter.segment(cleaned))
+      .map((segment) => segment.segment.trim())
+      .filter(Boolean);
+  }
+  return cleaned.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+}
+
+function appendSentences(existing: string | null, incoming: string): string {
+  const base = existing ? existing.split('\n').map((line) => line.trim()).filter(Boolean) : [];
+  const additions = splitIntoSentences(incoming);
+  if (additions.length === 0) {
+    return base.join('\n');
+  }
+  return [...base, ...additions].join('\n');
+}
+
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey =
@@ -24,13 +45,11 @@ function getSupabaseClient() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { 
-      meetingId, 
-      sourceText, 
-      sourceLang, 
+    const {
+      meetingId,
+      sourceText,
+      sourceLang,
       speakerId,
-      targetLang,
-      translatedText
     } = body;
 
     if (!meetingId || !sourceText) {
@@ -59,18 +78,12 @@ export async function POST(request: Request) {
 
     if (existing) {
       // 2. Accumulate: Append new text to the existing row
-      const newSource = existing.source_text ? existing.source_text + '\n' + sourceText : sourceText;
-      const newTranslated = translatedText 
-        ? (existing.translated_text ? existing.translated_text + '\n' + translatedText : translatedText)
-        : existing.translated_text;
-
+      const newSource = appendSentences(existing.source_text ?? null, sourceText);
       const { error: updateError } = await supabase
         .from('transcript_segments')
         .update({
           source_text: newSource,
-          translated_text: newTranslated,
           source_lang: sourceLang ?? null,
-          target_lang: targetLang ?? null,
           speaker_id: speakerId ?? null,
           created_at: new Date().toISOString(), // Optional: update timestamp to show latest activity
         })
@@ -84,11 +97,9 @@ export async function POST(request: Request) {
       // 3. Insert new row if none exists for this meeting
       const { error: insertError } = await supabase.from('transcript_segments').insert({
         meeting_id: meetingId,
-        source_text: sourceText,
+        source_text: appendSentences(null, sourceText),
         source_lang: sourceLang ?? null,
         speaker_id: speakerId ?? null,
-        target_lang: targetLang ?? null,
-        translated_text: translatedText ?? null,
       });
 
       if (insertError) {

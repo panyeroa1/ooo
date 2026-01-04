@@ -4,6 +4,18 @@ import { createClient } from '@supabase/supabase-js';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function splitIntoSentences(text: string): string[] {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return [];
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
+    return Array.from(segmenter.segment(cleaned))
+      .map((segment) => segment.segment.trim())
+      .filter(Boolean);
+  }
+  return cleaned.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+}
+
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey =
@@ -42,9 +54,9 @@ export async function POST(request: Request) {
       return new NextResponse('Supabase client not configured', { status: 503 });
     }
 
-    // Join all segments into a single text block
-    const fullSourceText = segments.map(s => s.text).join('\n');
-    const fullTranslatedText = segments.map(s => s.translatedText).filter(Boolean).join('\n');
+    // Join all segments into sentence-level lines
+    const sourceLines = segments.flatMap((segment: any) => splitIntoSentences(segment.text ?? ''));
+    const fullSourceText = sourceLines.join('\n');
 
     // 1. Try to find an existing row
     const { data: existingRows } = await supabase
@@ -58,14 +70,13 @@ export async function POST(request: Request) {
 
     if (existing) {
       // 2. Update existing row
-      const newSource = (existing.source_text || '') + '\n' + fullSourceText;
-      const newTranslated = (existing.translated_text || '') + '\n' + fullTranslatedText;
+      const baseSource = existing.source_text ? existing.source_text.split('\n') : [];
+      const newSource = [...baseSource, ...sourceLines].filter(Boolean).join('\n');
 
       const { error } = await supabase
         .from('transcript_segments')
         .update({
           source_text: newSource.trim(),
-          translated_text: newTranslated.trim(),
           created_at: new Date().toISOString(),
         })
         .eq('id', existing.id);
@@ -76,7 +87,6 @@ export async function POST(request: Request) {
       const { error } = await supabase.from('transcript_segments').insert({
         meeting_id: meetingId,
         source_text: fullSourceText.trim(),
-        translated_text: fullTranslatedText.trim(),
         speaker_id: segments[0].speakerId || 'unknown',
       });
 

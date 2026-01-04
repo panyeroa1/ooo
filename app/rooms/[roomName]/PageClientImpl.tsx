@@ -476,7 +476,7 @@ function TranslatePanel({
   isListening,
   isBroadcastActive,
   onListenToggle,
-  onListenTranslationClick,
+  onTranslateNowClick,
   targetLanguage,
   onTargetLanguageChange,
   translationEngine,
@@ -493,7 +493,7 @@ function TranslatePanel({
   isListening: boolean;
   isBroadcastActive: boolean;
   onListenToggle: (enabled: boolean | ((prev: boolean) => boolean)) => void;
-  onListenTranslationClick: () => void;
+  onTranslateNowClick: () => void;
   targetLanguage: string;
   onTargetLanguageChange: (lang: string | ((prev: string) => string)) => void;
   translationEngine: 'google' | 'ollama' | 'gemini';
@@ -606,10 +606,10 @@ function TranslatePanel({
           </div>
           <button
             className={roomStyles.sidebarCardButton}
-            onClick={onListenTranslationClick}
+            onClick={onTranslateNowClick}
             disabled={!isBroadcastActive || transcriptions.length === 0}
           >
-            Listen Translation
+            Translate now
           </button>
         </div>
 
@@ -751,10 +751,10 @@ function TranslatePanel({
             </div>
             <button
               className={roomStyles.sidebarCardButton}
-              onClick={onListenTranslationClick}
+              onClick={onTranslateNowClick}
               disabled={!isBroadcastActive || transcriptions.length === 0}
             >
-              Listen to Translation
+              Translate now
             </button>
           </div>
           <div className={roomStyles.translationClipCard}>
@@ -932,7 +932,10 @@ function VideoConferenceComponent(props: {
   const [waitingList, setWaitingList] = React.useState<{ identity: string; name: string }[]>([]);
   const [admittedIds, setAdmittedIds] = React.useState<Set<string>>(new Set());
   const [isListening, setIsListening] = React.useState(false);
+  const [playOnce, setPlayOnce] = React.useState(false);
+  const [autoListeningEnabled, setAutoListeningEnabled] = React.useState(false);
   const [isAppMuted, setIsAppMuted] = React.useState(false);
+  const [mutedSpeakerId, setMutedSpeakerId] = React.useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = React.useState('en');
   const [translationQueue, setTranslationQueue] = React.useState<string[]>([]);
   const [isAudioPlaying, setIsAudioPlaying] = React.useState(false);
@@ -947,8 +950,9 @@ function VideoConferenceComponent(props: {
   const [broadcastLocked, setBroadcastLocked] = React.useState(false);
   const [currentBroadcasterId, setCurrentBroadcasterId] = React.useState<string | null>(null);
   const heartbeatRef = React.useRef<NodeJS.Timeout | null>(null);
+  const lastLockStateRef = React.useRef(false);
 
-  const [translationEngine, setTranslationEngine] = React.useState<'google' | 'ollama' | 'gemini'>('google');
+  const [translationEngine, setTranslationEngine] = React.useState<'google' | 'ollama' | 'gemini'>('ollama');
   const [translationLog, setTranslationLog] = React.useState<TranslationEntry[]>([]);
   const [translationVoiceSelection, setTranslationVoiceSelection] = React.useState<'default' | 'custom'>(
     'default',
@@ -973,7 +977,8 @@ function VideoConferenceComponent(props: {
      * Renders the source sentence in the translation panel immediately.
      */
     const onRenderSource = async (e: any) => {
-      const { speakerId, text, timestamp, id } = e.detail;
+      const { speakerId, text, timestamp, id, translationEngine: engineOverride } = e.detail;
+      const engineToUse = engineOverride ?? translationEngine;
       
       setTranslationLog((prev) => [
         {
@@ -981,7 +986,7 @@ function VideoConferenceComponent(props: {
           speakerId,
           source: text,
           translated: '...', // Rendering "in progress" state
-          engine: translationEngine,
+          engine: engineToUse,
           timestamp,
         },
         ...prev,
@@ -996,7 +1001,8 @@ function VideoConferenceComponent(props: {
      * Performs AI translation and updates the log entry.
      */
     const onTranslate = async (e: any) => {
-      const { speakerId, text, timestamp, id } = e.detail;
+      const { speakerId, text, timestamp, id, translationEngine: engineOverride } = e.detail;
+      const provider = engineOverride ?? translationEngine;
       
       try {
         const res = await fetch('/api/translate', {
@@ -1005,7 +1011,7 @@ function VideoConferenceComponent(props: {
           body: JSON.stringify({
             text,
             targetLanguage,
-            provider: translationEngine,
+            provider,
           }),
         });
 
@@ -1016,22 +1022,6 @@ function VideoConferenceComponent(props: {
         setTranslationLog((prev) => prev.map(entry => 
           entry.id === id ? { ...entry, translated: translatedText } : entry
         ));
-
-        // Persist to DB if enabled
-        if (continuousSaveEnabled) {
-          fetch('/api/transcription/save-live', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              meetingId: roomName,
-              sourceText: text,
-              sourceLang: 'auto',
-              speakerId,
-              targetLang: targetLanguage,
-              translatedText,
-            }),
-          }).catch((err) => console.warn('Persistence failed:', err));
-        }
 
         // Propagate to TTS
         emitter.dispatchEvent(new CustomEvent('tts', { detail: { ...e.detail, translatedText } }));
@@ -1048,15 +1038,16 @@ function VideoConferenceComponent(props: {
      * Generates audio for the translated text and adds to playback queue.
      */
     const onTTS = async (e: any) => {
-      const { translatedText, playAudio } = e.detail;
+      const { translatedText, playAudio, ttsEngine: ttsOverride } = e.detail;
       if (!playAudio) return;
+      const ttsProvider = ttsOverride ?? ttsEngine;
 
       try {
         const ttsPayload: Record<string, string> = {
           text: translatedText,
-          provider: ttsEngine,
+          provider: ttsProvider,
         };
-        if (ttsEngine === 'cartesia' && translationVoiceId) {
+        if (ttsProvider === 'cartesia' && translationVoiceId) {
           ttsPayload.voiceId = translationVoiceId;
         }
 
@@ -1087,7 +1078,15 @@ function VideoConferenceComponent(props: {
   }, [roomName, isListening, targetLanguage, translationEngine, translationVoiceId, ttsEngine, continuousSaveEnabled]);
 
   const translateAndQueue = React.useCallback(
-    async (speakerId: string, sourceText: string, playAudio: boolean) => {
+    async (
+      speakerId: string,
+      sourceText: string,
+      playAudio: boolean,
+      engineOverrides?: {
+        translationEngine?: 'google' | 'ollama' | 'gemini';
+        ttsEngine?: 'cartesia' | 'google-genai' | 'livekit-agent';
+      },
+    ) => {
       const text = sourceText.trim();
       if (!text || text.length < 2) return;
 
@@ -1097,41 +1096,14 @@ function VideoConferenceComponent(props: {
           speakerId,
           text,
           timestamp: Date.now(),
-          playAudio // This can be used in the listeners to skip steps if needed
+          playAudio,
+          translationEngine: engineOverrides?.translationEngine,
+          ttsEngine: engineOverrides?.ttsEngine,
         }
       }));
     },
     [],
   );
-
-  const handleListenTranslationClick = React.useCallback(async () => {
-    const latest = transcriptions.reduce<{
-      id: string;
-      speakerId: string;
-      text: string;
-      timestamp: number;
-    } | null>((prev, next) => {
-      if (!prev || next.timestamp > prev.timestamp) {
-        return next;
-      }
-      return prev;
-    }, null);
-
-    if (!latest || !latest.text) {
-      return;
-    }
-
-    setIsListening(true);
-    setIsAppMuted(true);
-    
-    // Prime audio
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-    audioRef.current.load();
-    
-    await translateAndQueue(latest.speakerId, latest.text, true);
-  }, [transcriptions, translateAndQueue]);
 
   const playJoinSound = React.useCallback(() => {
     try {
@@ -1202,6 +1174,55 @@ function VideoConferenceComponent(props: {
     noiseSuppressionEnabled,
     voiceFocusEnabled,
   ]);
+
+  const handleTranslateNowClick = React.useCallback(async () => {
+    const latest = transcriptions.reduce<{
+      id: string;
+      speakerId: string;
+      text: string;
+      timestamp: number;
+    } | null>((prev, next) => {
+      if (!prev || next.timestamp > prev.timestamp) {
+        return next;
+      }
+      return prev;
+    }, null);
+
+    if (!latest || !latest.text) {
+      return;
+    }
+
+    // Prime audio
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    audioRef.current.load();
+    
+    if (!isListening) {
+      setPlayOnce(true);
+    }
+    const localIdentity = room.localParticipant?.identity;
+    if (latest.speakerId && latest.speakerId !== localIdentity) {
+      setMutedSpeakerId(latest.speakerId);
+    } else {
+      setMutedSpeakerId(null);
+    }
+
+    await translateAndQueue(latest.speakerId, latest.text, true, {
+      translationEngine: 'ollama',
+      ttsEngine: 'cartesia',
+    });
+  }, [transcriptions, translateAndQueue, isListening, room]);
+
+  React.useEffect(() => {
+    if (!playOnce || isListening) return;
+    if (translationQueue.length > 0 || isAudioPlaying) return;
+    const timeout = setTimeout(() => {
+      setPlayOnce(false);
+      setMutedSpeakerId(null);
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [playOnce, isListening, translationQueue.length, isAudioPlaying]);
 
   React.useEffect(() => {
     if (e2eeEnabled) {
@@ -1469,41 +1490,64 @@ function VideoConferenceComponent(props: {
     return () => clearInterval(pollInterval);
   }, [roomName]);
 
+  React.useEffect(() => {
+    const lockedByOther =
+      broadcastLocked &&
+      currentBroadcasterId !== null &&
+      currentBroadcasterId !== room?.localParticipant?.identity;
+
+    if (lockedByOther && !lastLockStateRef.current) {
+      setSidebarCollapsed(false);
+      setActiveSidebarPanel('translate');
+      if (!isListening) {
+        setIsListening(true);
+        setIsAppMuted(true);
+        setAutoListeningEnabled(true);
+        setMutedSpeakerId(null);
+        if (!audioRef.current) audioRef.current = new Audio();
+        audioRef.current.load();
+      }
+    } else if (!lockedByOther && lastLockStateRef.current && autoListeningEnabled) {
+      setIsListening(false);
+      setIsAppMuted(false);
+      setAutoListeningEnabled(false);
+      setMutedSpeakerId(null);
+    }
+
+    lastLockStateRef.current = lockedByOther;
+  }, [broadcastLocked, currentBroadcasterId, room?.localParticipant?.identity, isListening, autoListeningEnabled]);
+
   // Audio Muting Logic - Mute others when listening to translation
   React.useEffect(() => {
     if (!room) return;
 
-    const remoteAudioTracks = Array.from(room.remoteParticipants.values()).flatMap((p: RemoteParticipant) => 
-      Array.from(p.audioTrackPublications.values())
-    ).filter((t: RemoteTrackPublication) => t.source === Track.Source.Microphone);
-    
-    remoteAudioTracks.forEach((trackPub: RemoteTrackPublication) => {
-      if (trackPub.track) {
-        if (isListening) {
-          (trackPub.track as any).setMuted?.(true);
-          // If using standard HTML elements, we might need to find them and mute
-          const elements = trackPub.track.attachedElements;
-          elements.forEach((el: HTMLMediaElement) => {
-            el.muted = true;
+    const applyMuteState = () => {
+      room.remoteParticipants.forEach((participant, identity) => {
+        participant.audioTrackPublications.forEach((trackPub: RemoteTrackPublication) => {
+          if (trackPub.source !== Track.Source.Microphone || !trackPub.track) return;
+          const shouldMute = isListening || (!!mutedSpeakerId && identity === mutedSpeakerId);
+          (trackPub.track as any).setMuted?.(shouldMute);
+          trackPub.track.attachedElements.forEach((el: HTMLMediaElement) => {
+            el.muted = shouldMute;
           });
-        } else {
-          (trackPub.track as any).setMuted?.(false);
-          const elements = trackPub.track.attachedElements;
-          elements.forEach((el: HTMLMediaElement) => {
-            el.muted = false;
-          });
-        }
-      }
-    });
+        });
+      });
+    };
+
+    applyMuteState();
 
     // Also handle future tracks
-    const handleTrackSubscribed = (track: RemoteTrack) => {
+    const handleTrackSubscribed = (
+      track: RemoteTrack,
+      _publication: RemoteTrackPublication,
+      participant: RemoteParticipant,
+    ) => {
       if (track.source === Track.Source.Microphone) {
-        if (isListening) {
-          track.attachedElements.forEach((el: HTMLMediaElement) => {
-            el.muted = true;
-          });
-        }
+        const shouldMute = isListening || (!!mutedSpeakerId && participant.identity === mutedSpeakerId);
+        (track as any).setMuted?.(shouldMute);
+        track.attachedElements.forEach((el: HTMLMediaElement) => {
+          el.muted = shouldMute;
+        });
       }
     };
 
@@ -1511,7 +1555,7 @@ function VideoConferenceComponent(props: {
     return () => {
       room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
     };
-  }, [isListening, room]);
+  }, [isListening, room, mutedSpeakerId]);
 
   // SSE listener for remote transcriptions (to avoid local echo and handle cumulative text)
   React.useEffect(() => {
@@ -1582,7 +1626,14 @@ function VideoConferenceComponent(props: {
 
         if (!delta || delta.length < 2) return;
 
-        await translateAndQueue(speakerId, delta, isListening);
+        await translateAndQueue(
+          speakerId,
+          delta,
+          isListening,
+          isListening
+            ? { translationEngine: 'ollama', ttsEngine: 'cartesia' }
+            : undefined,
+        );
       } catch (error) {
         console.warn('Failed to process message from stream', error);
       }
@@ -1601,7 +1652,7 @@ function VideoConferenceComponent(props: {
 
   // Audio queue runner
   React.useEffect(() => {
-    if (translationQueue.length > 0 && !isAudioPlaying && isListening) {
+    if (translationQueue.length > 0 && !isAudioPlaying && (isListening || playOnce)) {
       const nextAudio = translationQueue[0];
       setIsAudioPlaying(true);
       
@@ -1615,13 +1666,27 @@ function VideoConferenceComponent(props: {
         console.warn('Playback failed (possibly autoplay blocked):', error);
         // Move to next even if it fails to avoid getting stuck
         setIsAudioPlaying(false);
-        setTranslationQueue((prev) => prev.slice(1));
+        setTranslationQueue((prev) => {
+          const next = prev.slice(1);
+          if (next.length === 0 && playOnce && !isListening) {
+            setPlayOnce(false);
+            setMutedSpeakerId(null);
+          }
+          return next;
+        });
         URL.revokeObjectURL(nextAudio);
       });
       
       audioRef.current.onended = () => {
         console.log('Finished playing translation audio');
-        setTranslationQueue((prev) => prev.slice(1));
+        setTranslationQueue((prev) => {
+          const next = prev.slice(1);
+          if (next.length === 0 && playOnce && !isListening) {
+            setPlayOnce(false);
+            setMutedSpeakerId(null);
+          }
+          return next;
+        });
         setIsAudioPlaying(false);
         URL.revokeObjectURL(nextAudio);
       };
@@ -1629,20 +1694,27 @@ function VideoConferenceComponent(props: {
       audioRef.current.onerror = (e) => {
         console.error('Audio element error:', e);
         setIsAudioPlaying(false);
-        setTranslationQueue((prev) => prev.slice(1));
+        setTranslationQueue((prev) => {
+          const next = prev.slice(1);
+          if (next.length === 0 && playOnce && !isListening) {
+            setPlayOnce(false);
+            setMutedSpeakerId(null);
+          }
+          return next;
+        });
         URL.revokeObjectURL(nextAudio);
       };
     }
-  }, [translationQueue, isAudioPlaying, isListening]);
+  }, [translationQueue, isAudioPlaying, isListening, playOnce]);
 
   // Stop audio if listening is toggled off
   React.useEffect(() => {
-    if (!isListening) {
+    if (!isListening && !playOnce) {
       audioRef.current?.pause();
       setIsAudioPlaying(false);
       setTranslationQueue([]);
     }
-  }, [isListening]);
+  }, [isListening, playOnce]);
 
   const admitParticipant = React.useCallback((identity: string) => {
     setWaitingList((prev) => prev.filter((p) => p.identity !== identity));
@@ -1753,6 +1825,8 @@ function VideoConferenceComponent(props: {
   const handleToggleListenTranslation = async () => {
     const nextValue = !isListening;
     setIsListening(nextValue);
+    setAutoListeningEnabled(false);
+    setMutedSpeakerId(null);
     
     // Prime the audio element in direct response to user click to unlock autoplay
     if (nextValue) {
@@ -1767,7 +1841,10 @@ function VideoConferenceComponent(props: {
     if (nextValue && transcriptions.length > 0) {
       const lastTranscript = transcriptions[0];
       if (lastTranscript && lastTranscript.text) {
-        await translateAndQueue(lastTranscript.speakerId, lastTranscript.text, true);
+        await translateAndQueue(lastTranscript.speakerId, lastTranscript.text, true, {
+          translationEngine: 'ollama',
+          ttsEngine: 'cartesia',
+        });
       }
     }
   };
@@ -1861,7 +1938,7 @@ function VideoConferenceComponent(props: {
               onCustomTranslationVoiceChange={setCustomTranslationVoice}
               ttsEngine={ttsEngine}
               onTtsEngineChange={setTtsEngine}
-              onListenTranslationClick={handleListenTranslationClick}
+              onTranslateNowClick={handleTranslateNowClick}
             />
           );
       default:

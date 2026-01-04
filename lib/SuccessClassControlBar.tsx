@@ -725,9 +725,10 @@ export function SuccessClassControlBar({
         {onBroadcastToggle && (
           <button
             className={`${styles.controlButton} ${isBroadcastOpen ? styles.controlButtonActive : ''} ${isBroadcasting ? styles.broadcastActive : ''} ${isBroadcastLocked && !isBroadcasting ? styles.controlButtonMuted : ''}`}
-            onClick={onBroadcastToggle}
+            onClick={isBroadcastLocked && !isBroadcasting ? undefined : onBroadcastToggle}
             title={isBroadcastLocked && !isBroadcasting ? `Locked by ${broadcasterId}` : "Broadcast & Captions"}
             aria-pressed={isBroadcastOpen}
+            disabled={isBroadcastLocked && !isBroadcasting}
           >
             {isBroadcastLocked && !isBroadcasting ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -888,11 +889,13 @@ export function SuccessClassControlBar({
 
             {onBroadcastToggle && (
               <button 
-                className={`${styles.mobileGridItem} ${isBroadcasting ? styles.mobileGridItemActive : ''} ${isBroadcastOpen ? styles.mobileGridItemActive : ''}`}
+                className={`${styles.mobileGridItem} ${isBroadcasting ? styles.mobileGridItemActive : ''} ${isBroadcastOpen ? styles.mobileGridItemActive : ''} ${isBroadcastLocked && !isBroadcasting ? styles.controlButtonMuted : ''}`}
                 onClick={() => {
+                  if (isBroadcastLocked && !isBroadcasting) return;
                   onBroadcastToggle();
                   setIsMobileMenuOpen(false);
                 }}
+                disabled={isBroadcastLocked && !isBroadcasting}
               >
                 <div className={styles.mobileGridIcon}><BroadcastIcon /></div>
                 <span className={styles.mobileGridLabel}>Broadcast</span>
