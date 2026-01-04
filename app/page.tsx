@@ -1,260 +1,137 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import React, { Suspense, useState } from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { encodePassphrase, generateRoomId, randomString } from '@/lib/client-utils';
 import styles from '../styles/Home.module.css';
 
-function Tabs(props: React.PropsWithChildren<{}>) {
-  const searchParams = useSearchParams();
-  const tabIndex = searchParams?.get('tab') === 'custom' ? 1 : 0;
-
-  const router = useRouter();
-  function onTabSelected(index: number) {
-    const tab = index === 1 ? 'custom' : 'demo';
-    router.push(`/?tab=${tab}`);
-  }
-
-  const labels = ['Start Meeting', 'Connect Server'];
-
-  return (
-    <div className={styles.tabContainer}>
-      <div className={styles.tabSelect}>
-        {labels.map((label, index) => (
-          <button
-            key={label}
-            className={`${styles.tabButton} ${tabIndex === index ? styles.tabButtonActive : ''}`}
-            onClick={() => onTabSelected(index)}
-            role="tab"
-            aria-selected={tabIndex === index}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel">
-        {/* @ts-ignore */}
-        {props.children[tabIndex]}
-      </div>
-    </div>
-  );
-}
-
-function DemoMeetingTab(props: { label: string }) {
+function ControlCard() {
   const router = useRouter();
   const [e2ee, setE2ee] = useState(false);
   const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
-  
-  const startMeeting = () => {
-    if (e2ee) {
-      router.push(`/rooms/${generateRoomId()}#${encodePassphrase(sharedPassphrase)}`);
-    } else {
-      router.push(`/rooms/${generateRoomId()}`);
-    }
+
+  const joinRoom = () => {
+    const roomId = generateRoomId();
+    const href = e2ee ? `/rooms/${roomId}#${encodePassphrase(sharedPassphrase)}` : `/rooms/${roomId}`;
+    router.push(href);
   };
 
   return (
-    <div className={styles.tabContent}>
-      <p className={styles.description}>
-        Launch a secure, HD meeting room instantly. No downloads required.
-      </p>
-      <button className={styles.startButton} onClick={startMeeting}>
-        Start Premium Meeting
+    <div className={styles.controlCard}>
+      <h3>Launch instant premium room</h3>
+      <p>Auto-configured HD connection, encrypted by default.</p>
+      <button className={styles.primaryButton} onClick={joinRoom}>
+        Start premium meeting
       </button>
-      
-      <div className={styles.optionsSection}>
-        <div className={styles.optionRow}>
-          <span className={styles.optionLabel}>
-            <svg className={styles.optionIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            End-to-end encryption
-          </span>
-          <label className={`${styles.toggle} ${e2ee ? styles.toggleActive : ''}`}>
-            <input
-              className={styles.toggleInput}
-              type="checkbox"
-              checked={e2ee}
-              onChange={(ev) => setE2ee(ev.target.checked)}
-              aria-label="Enable end-to-end encryption"
-              title="Enable end-to-end encryption"
-            />
-          </label>
-        </div>
-        
+      <div className={styles.cardSettings}>
+        <label className={styles.switchLabel}>
+          <input
+            type="checkbox"
+            checked={e2ee}
+            onChange={(ev) => setE2ee(ev.target.checked)}
+          />
+          <span>Enable E2E encryption</span>
+        </label>
         {e2ee && (
-          <div className={styles.passphraseRow}>
-            <span className={styles.passphraseLabel}>Encryption passphrase</span>
-            <input
-              className={styles.passphraseInput}
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
-              placeholder="Enter secure passphrase..."
-            />
-          </div>
+          <input
+            className={styles.passphraseInput}
+            type="password"
+            value={sharedPassphrase}
+            onChange={(ev) => setSharedPassphrase(ev.target.value)}
+            placeholder="Enter passphrase..."
+          />
         )}
       </div>
     </div>
   );
 }
 
-function CustomConnectionTab(props: { label: string }) {
-  const router = useRouter();
-  const [e2ee, setE2ee] = useState(false);
-  const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
-
-  const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.target as HTMLFormElement);
-    const serverUrl = formData.get('serverUrl');
-    const token = formData.get('token');
-    if (e2ee) {
-      router.push(
-        `/custom/?orbitUrl=${serverUrl}&token=${token}#${encodePassphrase(sharedPassphrase)}`,
-      );
-    } else {
-      router.push(`/custom/?orbitUrl=${serverUrl}&token=${token}`);
-    }
-  };
-
+function ConnectionCard() {
   return (
-    <form className={styles.tabContent} onSubmit={onSubmit}>
-      <p className={styles.customDescription}>
-        Connect to your own Orbit Cloud or self-hosted server.
-      </p>
-      <input
-        className={styles.input}
-        id="serverUrl"
-        name="serverUrl"
-        type="url"
-        placeholder="Orbit Server URL (wss://your-server.orbit.cloud)"
-        required
-      />
-      <textarea
-        className={styles.textarea}
-        id="token"
-        name="token"
-        placeholder="Paste your access token here..."
-        required
-        rows={4}
-      />
-      
-      <div className={styles.optionsSection}>
-        <div className={styles.optionRow}>
-          <span className={styles.optionLabel}>
-            <svg className={styles.optionIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            End-to-end encryption
-          </span>
-          <label className={`${styles.toggle} ${e2ee ? styles.toggleActive : ''}`}>
-            <input
-              className={styles.toggleInput}
-              type="checkbox"
-              checked={e2ee}
-              onChange={(ev) => setE2ee(ev.target.checked)}
-              aria-label="Enable end-to-end encryption"
-              title="Enable end-to-end encryption"
-            />
-          </label>
-        </div>
-        
-        {e2ee && (
-          <div className={styles.passphraseRow}>
-            <span className={styles.passphraseLabel}>Encryption passphrase</span>
-            <input
-              className={styles.passphraseInput}
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
-              placeholder="Enter secure passphrase..."
-            />
-          </div>
-        )}
-      </div>
-
-      <hr className={styles.separator} />
-      <button className={styles.submitButton} type="submit">
-        Connect to Server
+    <div className={styles.highlightCard}>
+      <h3>Enterprise integration toolkit</h3>
+      <p>Connect tokens, servers, or self-hosted Orbit clouds with a single form.</p>
+      <button className={styles.secondaryButton} onClick={() => window.location.assign('/integrations')}>
+        Explore integrations
       </button>
-    </form>
+    </div>
   );
 }
 
 export default function Page() {
   return (
-    <>
-      <main className={styles.main} data-lk-theme="default">
-        {/* Hero Section */}
-        <div className={styles.hero}>
-          <div className={styles.badge}>
+    <main className={styles.main}>
+      <div className={styles.heroLayer}>
+        <div className={styles.heroContent}>
+          <div className={styles.heroBadge}>
             <span className={styles.badgeDot} />
-            Enterprise-Grade Video
+            Enterprise-grade experience
           </div>
-          
           <Image
             className={styles.logo}
             src="/images/success-class-logo.svg"
             alt="Eburon Meet"
-            width={320}
-            height={40}
+            width={220}
+            height={36}
             priority
           />
-          
           <h1 className={styles.headline}>
-            The Future of
-            <br />
-            <span className={styles.headlineAccent}>Premium Meetings</span>
+            Premium meetings with
+            <span className={styles.headlineAccent}> AI-native translation & voice </span>
           </h1>
-          
           <p className={styles.subheadline}>
-            Crystal-clear video, AI-powered transcription, and enterprise security.
-            100x better than the rest.
+            Full-stack conferencing, contextual transcripts, and AI-powered narration that adapts to every speaker.
+            Built for teams who need clarity, speed, and control.
+          </p>
+          <div className={styles.heroStats}>
+            <div>
+              <strong>4K</strong>
+              <span>High-definition video</span>
+            </div>
+            <div>
+              <strong>+</strong>
+              <span>Instant AI translation</span>
+            </div>
+            <div>
+              <strong>Secure</strong>
+              <span>E2EE with granular access</span>
+            </div>
+          </div>
+        </div>
+        <div className={styles.heroCardWrap}>
+          <ControlCard />
+          <ConnectionCard />
+        </div>
+      </div>
+
+      <section className={styles.featuresGrid}>
+        {[
+          { title: 'Adaptive AI captions', body: 'Realtime Supabase archive + translation memory.' },
+          { title: 'Translation dashboard', body: 'Ticker-style feed, translation engine switching, and TTS playback.' },
+          { title: 'Broadcast controls', body: 'Single-source broadcaster, audio muting, and continuous saves.' },
+          { title: 'Integrations', body: 'Extensible AI tooling, Gemini, Ollama, Cartesia, and LiveKit together.' },
+        ].map((feature) => (
+          <article key={feature.title} className={styles.featureTile}>
+            <div className={styles.featureIcon}>{feature.title.charAt(0)}</div>
+            <h3>{feature.title}</h3>
+            <p>{feature.body}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className={styles.integrationBanner}>
+        <div>
+          <h2>Integrations for every workflow</h2>
+          <p>
+            Connect voice engines, analytics, and automation in one place. Tap the integration suite for AI tools that
+            amplify every meeting with smarter context.
           </p>
         </div>
-
-        {/* Meeting Card */}
-        <div className={styles.card}>
-          <Suspense fallback="Loading...">
-            <Tabs>
-              <DemoMeetingTab label="Demo" />
-              <CustomConnectionTab label="Custom" />
-            </Tabs>
-          </Suspense>
-        </div>
-
-        {/* Features */}
-        <div className={styles.features}>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>✓</span>
-            4K Video
-          </div>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>✓</span>
-            AI Transcription
-          </div>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>✓</span>
-            E2E Encryption
-          </div>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>✓</span>
-            No Downloads
-          </div>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        Crafted by{' '}
-        <a href="https://eburon.ai" rel="noopener">
-          Eburon
-        </a>
-        {' '}— Premium video infrastructure for the future.
-      </footer>
-    </>
+        <button className={styles.primaryButton} onClick={() => window.location.assign('/integrations')}>
+          View integration tools
+        </button>
+      </section>
+    </main>
   );
 }
