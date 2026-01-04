@@ -308,10 +308,6 @@ function BroadcastPanel({
   transcriptions,
   continuousSaveEnabled,
   onContinuousSaveChange,
-  captionLanguage,
-  onCaptionLanguageChange,
-  captionEngine,
-  onCaptionEngineChange,
   captionAudioSource,
   onCaptionAudioSourceChange,
   onSaveTranscription,
@@ -325,10 +321,6 @@ function BroadcastPanel({
   transcriptions: { id: string; speakerId: string; text: string; timestamp: number }[];
   continuousSaveEnabled: boolean;
   onContinuousSaveChange: (enabled: boolean) => void;
-  captionLanguage: string;
-  onCaptionLanguageChange: (lang: string) => void;
-  captionEngine: 'webspeech';
-  onCaptionEngineChange: (engine: 'webspeech') => void;
   captionAudioSource: 'auto' | 'microphone' | 'screen';
   onCaptionAudioSourceChange: (source: 'auto' | 'microphone' | 'screen') => void;
   onSaveTranscription: () => void;
@@ -928,7 +920,6 @@ function VideoConferenceComponent(props: {
   const [captionsEnabled, setCaptionsEnabled] = React.useState(true);
   const [isBroadcasting, setIsBroadcasting] = React.useState(false);
   const [captionLanguage, setCaptionLanguage] = React.useState('auto');
-  const [captionEngine, setCaptionEngine] = React.useState<'webspeech'>('webspeech');
   const [captionAudioSource, setCaptionAudioSource] = React.useState<'auto' | 'microphone' | 'screen'>('auto');
   const [transcriptSegments, setTranscriptSegments] = React.useState<TranscriptSegment[]>([]);
   const [continuousSaveEnabled, setContinuousSaveEnabled] = React.useState(false);
@@ -1835,10 +1826,6 @@ function VideoConferenceComponent(props: {
             transcriptions={transcriptions}
             continuousSaveEnabled={continuousSaveEnabled}
             onContinuousSaveChange={setContinuousSaveEnabled}
-            captionLanguage={captionLanguage}
-            onCaptionLanguageChange={setCaptionLanguage}
-            captionEngine={captionEngine}
-            onCaptionEngineChange={setCaptionEngine}
             captionAudioSource={captionAudioSource}
             onCaptionAudioSourceChange={setCaptionAudioSource}
             onSaveTranscription={handleSaveTranscription}
@@ -1940,6 +1927,8 @@ function VideoConferenceComponent(props: {
             isTranslateOpen={!sidebarCollapsed && activeSidebarPanel === 'translate'}
             isSettingsOpen={!sidebarCollapsed && activeSidebarPanel === 'settings'}
             isBroadcasting={isBroadcasting}
+            isBroadcastLocked={broadcastLocked}
+            broadcasterId={currentBroadcasterId}
             isAppMuted={isAppMuted}
             onAppMuteToggle={setIsAppMuted}
             isListening={isListening}

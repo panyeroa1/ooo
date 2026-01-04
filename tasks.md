@@ -1495,3 +1495,46 @@ Summary:
 
 Test result:
 - PASS
+
+Task ID: T-0048
+Title: Persistent Broadcast Lock & Deepgram Removal
+Status: DONE
+Owner: Miles
+
+START LOG
+
+Timestamp: 2026-01-04 16:25
+
+Current behavior:
+- Broadcast lock is in-memory and lost on server restart.
+- Both Deepgram and Web Speech API are supported as transcription engines.
+
+Plan and scope:
+- Migrate broadcast lock state to Supabase `broadcast_locks` table.
+- Implement heartbeat and stale lock handling in API and client.
+- Remove all Deepgram-related code and UI options.
+- Default transcription to Web Speech API.
+
+Files expected to change:
+- app/api/room/broadcast-status/route.ts
+- lib/LiveCaptions.tsx
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/SuccessClassControlBar.tsx
+- supabase/broadcast_locks.sql
+
+END LOG
+
+Timestamp: 2026-01-04 16:55
+
+Summary:
+- Successfully migrated broadcast lock to a persistent Supabase store with a heartbeat mechanism.
+- Removed Deepgram integration, simplifying the codebase to use native Web Speech API only.
+- Updated UI to reflect global broadcast status and indicate who holds the lock.
+- Resolved all TypeScript scoping and prop-drilling errors.
+
+How it was tested:
+- npm run build (Pass)
+- Visual code verification for state management and API integration.
+
+Test result:
+- PASS
