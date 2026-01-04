@@ -1477,6 +1477,59 @@ function VideoConferenceComponent(props: {
     }
   };
 
+  const handleToggleListenTranslation = async () => {
+    const nextValue = !isListening;
+    setIsListening(nextValue);
+
+    if (nextValue && transcriptions.length > 0) {
+      // Auto-translate the most recent transcription segment
+      const lastTranscript = transcriptions[0];
+      if (lastTranscript && lastTranscript.text) {
+        try {
+          const transRes = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: lastTranscript.text,
+              targetLanguage: targetLanguage,
+              provider: translationEngine,
+            }),
+          });
+
+          if (!transRes.ok) return;
+          const { translatedText } = await transRes.json();
+
+          setTranslationLog((prev) => [
+            {
+              speakerId: lastTranscript.speakerId,
+              source: lastTranscript.text,
+              translated: translatedText,
+              engine: translationEngine,
+              timestamp: Date.now(),
+            },
+            ...prev,
+          ].slice(0, 12));
+
+          const ttsPayload: Record<string, string> = { text: translatedText };
+          if (translationVoiceId) ttsPayload.voiceId = translationVoiceId;
+
+          const ttsRes = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ttsPayload),
+          });
+
+          if (!ttsRes.ok) return;
+          const audioBlob = await ttsRes.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          setTranslationQueue((prev) => [...prev, audioUrl]);
+        } catch (error) {
+          console.error('Failed to auto-translate last transcript', error);
+        }
+      }
+    }
+  };
+
   const renderSidebarPanel = () => {
     if (sidebarCollapsed) {
       return null;
@@ -1632,6 +1685,8 @@ function VideoConferenceComponent(props: {
             isBroadcasting={isBroadcasting}
             isAppMuted={isAppMuted}
             onAppMuteToggle={setIsAppMuted}
+            isListening={isListening}
+            onListenTranslationToggle={handleToggleListenTranslation}
             audioCaptureOptions={audioCaptureOptions}
           />
           
