@@ -2,8 +2,8 @@ import Link from 'next/link';
 import styles from '@/styles/DeveloperDocs.module.css';
 
 export const metadata = {
-  title: 'Developer API Documentation | Eburon',
-  description: 'Developer API reference for Eburon rooms, recordings, and integrations.',
+  title: 'Developer API Documentation | Success Class',
+  description: 'Developer API reference for Success Class rooms, recordings, and integrations.',
 };
 
 export default function DeveloperDocsPage() {
@@ -17,9 +17,9 @@ export default function DeveloperDocsPage() {
             Back to lobby
           </Link>
         </div>
-        <h1>Eburon Developer Documentation</h1>
+        <h1>Success Class Developer Documentation</h1>
         <p>
-          Endpoints, auth, and integration patterns for building on top of Eburon.
+          Endpoints, auth, and integration patterns for building on top of Success Class.
           Use these APIs to create rooms, manage participants, and automate
           workflows with your own services.
         </p>
@@ -37,17 +37,17 @@ export default function DeveloperDocsPage() {
         <div className={styles.sectionHeader}>
           <h2>Overview</h2>
           <p>
-            Eburon runs on Orbit Conference. The server-side APIs are exposed as Next.js
+            Success Class runs on Orbit AI. The server-side APIs are exposed as Next.js
             routes under <code>/api</code> and require the server environment keys to
-            access your Orbit Cloud securely.
+            access your Orbit AI Cloud securely.
           </p>
         </div>
         <div className={styles.cardGrid}>
           <article className={styles.card}>
             <h3>Authentication</h3>
             <p>
-              Server routes sign requests with <code>LIVEKIT_API_KEY</code> and
-              <code>LIVEKIT_API_SECRET</code>. Keep these on the server only.
+              Server routes sign requests with <code>ORBIT_AI_VIDEO_API_KEY</code> and
+              <code>ORBIT_AI_VIDEO_API_SECRET</code>. Keep these on the server only.
             </p>
           </article>
           <article className={styles.card}>
@@ -60,8 +60,8 @@ export default function DeveloperDocsPage() {
           <article className={styles.card}>
             <h3>Realtime events</h3>
             <p>
-              Room events, track state, and participant changes stream through Orbit.
-              Client UI reads state from the Orbit SDK.
+              Room events, track state, and participant changes stream through Orbit AI.
+              Client UI reads state from the Orbit AI SDK.
             </p>
           </article>
         </div>
@@ -105,7 +105,7 @@ export default function DeveloperDocsPage() {
               <span className={styles.method}>POST</span>
               <span className={styles.path}>/api/connection-details</span>
             </div>
-            <p>Create an Orbit token and return room connection details.</p>
+            <p>Create an Orbit AI token and return room connection details.</p>
           </article>
           <article className={styles.endpointCard}>
             <div className={styles.endpointHeader}>
@@ -133,7 +133,7 @@ export default function DeveloperDocsPage() {
               <span className={styles.method}>POST</span>
               <span className={styles.path}>/api/agent</span>
             </div>
-            <p>AI assistant powered by Ollama Cloud.</p>
+            <p>AI assistant powered by Orbit AI.</p>
           </article>
         </div>
       </section>
@@ -146,13 +146,13 @@ export default function DeveloperDocsPage() {
         <div className={styles.codeBlock}>
           <pre>
             <code>
-{`LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
-LIVEKIT_URL=wss://your-project.orbit.cloud
+{`ORBIT_AI_VIDEO_API_KEY=...
+ORBIT_AI_VIDEO_API_SECRET=...
+ORBIT_AI_URL=wss://your-project.orbit.ai
 
-OLLAMA_API_KEY=...
-OLLAMA_BASE_URL=https://ollama.com
-OLLAMA_MODEL=gpt-oss:120b
+ORBIT_AI_API_KEY=...
+ORBIT_AI_BASE_URL=https://orbit.ai
+ORBIT_AI_MODEL=orbit-ai-1
 `}
             </code>
           </pre>
@@ -182,9 +182,9 @@ OLLAMA_MODEL=gpt-oss:120b
 
 
       <footer className={styles.footer}>
-        <span>Eburon Developer API</span>
-        <a href="https://eburon.ai" target="_blank" rel="noopener noreferrer">
-          Powered by Orbit Conference
+        <span>Success Class Developer API</span>
+        <a href="https://orbit.ai" target="_blank" rel="noopener noreferrer">
+          Powered by Orbit AI
         </a>
       </footer>
     </main>

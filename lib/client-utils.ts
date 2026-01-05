@@ -25,5 +25,5 @@ export function isLowPowerDevice() {
 }
 
 export function isMeetStaging() {
-  return new URL(location.origin).host === 'meet.staging.livekit.io';
+  return new URL(location.origin).host === 'meet.staging.orbit.ai';
 }

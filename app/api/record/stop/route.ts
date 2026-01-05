@@ -19,12 +19,27 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Missing roomName parameter', { status: 403 });
     }
 
-    const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL } = process.env;
+    const {
+      ORBIT_AI_VIDEO_API_KEY,
+      ORBIT_AI_VIDEO_API_SECRET,
+      ORBIT_AI_URL,
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET,
+      LIVEKIT_URL,
+    } = process.env;
 
-    const hostURL = new URL(LIVEKIT_URL!);
+    const apiKey = ORBIT_AI_VIDEO_API_KEY ?? LIVEKIT_API_KEY;
+    const apiSecret = ORBIT_AI_VIDEO_API_SECRET ?? LIVEKIT_API_SECRET;
+    const orbitUrl = ORBIT_AI_URL ?? LIVEKIT_URL;
+
+    if (!apiKey || !apiSecret || !orbitUrl) {
+      return new NextResponse('Orbit AI video credentials are not configured', { status: 500 });
+    }
+
+    const hostURL = new URL(orbitUrl);
     hostURL.protocol = 'https:';
 
-    const egressClient = new EgressClient(hostURL.origin, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+    const egressClient = new EgressClient(hostURL.origin, apiKey, apiSecret);
     const activeEgresses = (await egressClient.listEgress({ roomName })).filter(
       (info) => info.status < 2,
     );

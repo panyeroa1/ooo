@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-const API_KEY = process.env.LIVEKIT_API_KEY;
-const API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_URL = process.env.LIVEKIT_URL;
+const API_KEY = process.env.ORBIT_AI_VIDEO_API_KEY ?? process.env.LIVEKIT_API_KEY;
+const API_SECRET = process.env.ORBIT_AI_VIDEO_API_SECRET ?? process.env.LIVEKIT_API_SECRET;
+const ORBIT_AI_URL = process.env.ORBIT_AI_URL ?? process.env.LIVEKIT_URL;
 
 export async function POST(request: NextRequest) {
   try {
-    if (!API_KEY || !API_SECRET || !LIVEKIT_URL) {
-      throw new Error('LIVEKIT_API_KEY, LIVEKIT_API_SECRET, or LIVEKIT_URL is not defined');
+    if (!API_KEY || !API_SECRET || !ORBIT_AI_URL) {
+      throw new Error('ORBIT_AI_VIDEO_API_KEY, ORBIT_AI_VIDEO_API_SECRET, or ORBIT_AI_URL is not defined');
     }
 
     const body = await request.json();
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse('Missing trackSid or trackSource', { status: 400 });
     }
 
-    const svc = new RoomServiceClient(LIVEKIT_URL, API_KEY, API_SECRET);
+    const svc = new RoomServiceClient(ORBIT_AI_URL, API_KEY, API_SECRET);
 
     let resolvedTrackSid = trackSid as string | undefined;
     if (!resolvedTrackSid) {

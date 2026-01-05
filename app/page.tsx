@@ -94,7 +94,7 @@ export default function Page() {
         <div className={styles.heroContent}>
           <div className={styles.heroBadge}>
             <span className={styles.badgeDot} />
-            Enterprise-grade experience
+            Success Class • Powered by Orbit AI
           </div>
           <a href="/integrations" className={styles.integrationIcon} aria-label="View integrations">
             🔗
@@ -109,16 +109,16 @@ export default function Page() {
           <Image
             className={styles.logo}
             src="/images/success-class-logo.svg"
-            alt="Eburon Meet"
+            alt="Success Class"
             width={220}
             height={36}
             priority
           />
           <h1 className={styles.headline}>
-            Premium meetings with <span className={styles.headlineAccent}>AI-native translation</span>
+            Success Class meetings with <span className={styles.headlineAccent}>Orbit AI intelligence</span>
           </h1>
           <p className={styles.subheadline}>
-            Crystal-clear video, live multilingual captions, and AI voice narration that mirrors every speaker with human nuance.
+            Crystal-clear video, Orbit AI insights, and live session summaries that stay on pace with every speaker.
           </p>
           <div className={styles.heroStats}>
             <div>
@@ -126,8 +126,8 @@ export default function Page() {
               <span>Ultra HD streaming</span>
             </div>
             <div>
-              <strong>Live</strong>
-              <span>Translation + TTS</span>
+              <strong>Orbit AI</strong>
+              <span>Insights + Summaries</span>
             </div>
             <div>
               <strong>Secure</strong>
@@ -167,7 +167,7 @@ export default function Page() {
           <div className={styles.zigZagContent}>
             <h2>Analytics & Insights</h2>
             <p>
-              Real-time sentiment analysis, speaker diarization, and live translation streams.
+              Real-time sentiment analysis, speaker highlights, and Orbit AI engagement streams.
               Visualize your meeting data with our premium dashboard.
             </p>
           </div>
@@ -185,13 +185,13 @@ export default function Page() {
         {/* Item 2: Translation (Right Text, Left Image) */}
         <div className={`${styles.zigZagRow} ${styles.rowReverse}`}>
           <div className={styles.zigZagContent}>
-            <h2>Native AI Translation</h2>
-            <p>Live, nuance-aware subtitles that adapt to speaker cadence.</p>
+            <h2>Orbit AI Highlights</h2>
+            <p>Live, nuance-aware insights that adapt to speaker cadence.</p>
           </div>
           <div className={styles.zigZagVisual}>
              <Image
               src="/images/feature-translation.png"
-              alt="AI Translation"
+              alt="Orbit AI Highlights"
               width={600}
               height={400}
               className={styles.featureImg}
@@ -203,7 +203,7 @@ export default function Page() {
         <div className={styles.zigZagRow}>
           <div className={styles.zigZagContent}>
             <h2>Flow Automation</h2>
-            <p>Connect Cartesia, Gemini, and Ollama in one seamless pipe.</p>
+            <p>Connect Orbit AI voice, insights, and automations in one seamless pipe.</p>
           </div>
           <div className={styles.zigZagVisual}>
              <Image
@@ -238,8 +238,8 @@ export default function Page() {
         <div>
           <h2>Integrations for every workflow</h2>
           <p>
-            Push clips to Gemini, run Cartesia Sonic-3, or sync LiveKit analytics from a single panel.
-            More AI tools keep your workspace superior to the rest.
+            Push clips to Orbit AI Narration, run Orbit AI Voice, or sync Orbit AI analytics from a single panel.
+            More Orbit AI tools keep your workspace superior to the rest.
           </p>
         </div>
         <button className={styles.primaryButton} onClick={() => window.location.assign('/integrations')}>

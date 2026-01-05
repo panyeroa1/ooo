@@ -45,8 +45,8 @@ export async function GET(request: Request) {
     // Return default config if not found
     if (!data) {
       return NextResponse.json({
-        tts_engine: 'cartesia',
-        translation_engine: 'google',
+        tts_engine: 'orbit-ai-voice',
+        translation_engine: 'orbit-ai',
         target_language: 'en',
         voice_id: null,
         continuous_save_enabled: false,
@@ -79,8 +79,8 @@ export async function POST(request: Request) {
       .from('user_configs')
       .upsert({
         user_identity: identity,
-        tts_engine: tts_engine || 'cartesia',
-        translation_engine: translation_engine || 'google',
+        tts_engine: tts_engine || 'orbit-ai-voice',
+        translation_engine: translation_engine || 'orbit-ai',
         target_language: target_language || 'en',
         voice_id: voice_id || null,
         continuous_save_enabled: continuous_save_enabled ?? false,

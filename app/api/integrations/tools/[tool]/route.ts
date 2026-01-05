@@ -8,7 +8,7 @@ const createSummary = (transcripts: string[]) => {
 };
 
 const createInsights = (transcripts: string[]) => {
-  const keywords = ['strategy', 'launch', 'budget', 'AI', 'translation', 'feedback'];
+  const keywords = ['strategy', 'launch', 'budget', 'orbit', 'ai', 'feedback'];
   const detected = keywords.filter((kw) =>
     transcripts.some((t) => t.toLowerCase().includes(kw)),
   );
@@ -55,6 +55,14 @@ const toolHandlers: Record<
     insights: createInsights(transcripts),
     trends: 'Peak energy around minute 12 and 42.',
   }),
+  'orbit-ai-polish': async ({ prompt = 'Executive update' }) => ({
+    revision: `Orbit AI polished the tone for: ${prompt}`,
+    guidance: 'Balanced urgency with warmth for leadership updates.',
+  }),
+  'supabase-gallery': async ({ clip = 'Key demo section' }) => ({
+    savedClip: clip,
+    location: 'supabase:meeting_clips',
+  }),
   'slidecraft-studio': async ({ prompt = 'Team meeting' }) => ({
     slides: createSlides(prompt),
     imagePrompt: `${prompt} abstract background with data streaks.`,
@@ -71,22 +79,22 @@ const toolHandlers: Record<
     savedClip: clip,
     location: 'localStorage:lastMeetingClip',
   }),
-  'gemini-narration': async ({ prompt = 'Executive update' }) => ({
-    narration: `Gemini ready to voice: ${prompt}`,
+  'orbit-ai-narration': async ({ prompt = 'Executive update' }) => ({
+    narration: `Orbit AI ready to voice: ${prompt}`,
     latency: 'Under 1.4s cold start',
   }),
-  'cartesia-precision': async () => ({
-    voice: 'Sonic-3',
+  'orbit-ai-voice': async () => ({
+    voice: 'Orbit AI Voice',
     format: 'wav (pcm_f32le)',
     note: 'Emotion tuned to calm, high clarity.',
   }),
-  'huggingface-summarizer': async ({ transcripts = [] }) => ({
+  'orbit-ai-summarizer': async ({ transcripts = [] }) => ({
     summary: transcripts.slice(0, 2).join(' / '),
-    model: 'distilbart-cnn-12-6',
+    model: 'orbit-ai-summary-1',
   }),
-  'slidecraft-image': async ({ prompt = 'AI innovation' }) => ({
-    imagePrompt: `Stable Diffusion slide background for ${prompt}`,
-    note: 'Use HuggingFace SDXL or open-source lightweight variant.',
+  'orbit-ai-image': async ({ prompt = 'AI innovation' }) => ({
+    imagePrompt: `Orbit AI slide background for ${prompt}`,
+    note: 'Use Orbit AI visuals for consistent style.',
   }),
 };
 

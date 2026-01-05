@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 type TtsRequestBody = {
   text: string;
   voiceId?: string;
-  provider?: 'cartesia' | 'google-genai' | 'livekit-agent';
+  provider?: 'orbit-ai' | 'orbit-ai-voice' | 'orbit-ai-agent';
 };
 
 function pcm16leToWav(pcm: Buffer, sampleRate = 24000, channels = 1): Buffer {
@@ -34,20 +34,19 @@ function pcm16leToWav(pcm: Buffer, sampleRate = 24000, channels = 1): Buffer {
 
 export async function POST(request: Request) {
   try {
-    const { text, voiceId: requestedVoiceId, provider = 'cartesia' } = (await request.json()) as TtsRequestBody;
+    const { text, voiceId: requestedVoiceId, provider = 'orbit-ai-voice' } = (await request.json()) as TtsRequestBody;
 
     if (!text) {
       return new NextResponse('Missing text', { status: 400 });
     }
 
-    if (provider === 'google-genai') {
-      const apiKey = process.env.GEMINI_API_KEY;
-      // Gemini TTS models are separate; keep configurable.
-      const model = process.env.GEMINI_AUDIO_MODEL || 'gemini-2.5-flash-preview-tts';
-      const voiceName = process.env.GEMINI_TTS_VOICE_NAME || 'Kore';
+    if (provider === 'orbit-ai') {
+      const apiKey = process.env.ORBIT_AI_API_KEY;
+      const model = process.env.ORBIT_AI_AUDIO_MODEL || 'orbit-ai-tts-1';
+      const voiceName = process.env.ORBIT_AI_TTS_VOICE_NAME || 'Orbit';
 
       if (!apiKey) {
-        return new NextResponse('Gemini API key not configured', { status: 503 });
+        return new NextResponse('Orbit AI API key not configured', { status: 503 });
       }
 
       const response = await fetch(
@@ -82,8 +81,8 @@ export async function POST(request: Request) {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Gemini audio error:', errorData);
-        return new NextResponse('Gemini audio failed', { status: 500 });
+        console.error('Orbit AI audio error:', errorData);
+        return new NextResponse('Orbit AI audio failed', { status: 500 });
       }
 
       const data = await response.json();
@@ -94,10 +93,10 @@ export async function POST(request: Request) {
         null;
 
       if (!audioBase64) {
-        return new NextResponse('Gemini returned no audio', { status: 500 });
+        return new NextResponse('Orbit AI returned no audio', { status: 500 });
       }
 
-      // Gemini returns PCM (example flow converts PCM -> WAV). Wrap for browser playback.
+      // Orbit AI returns PCM (example flow converts PCM -> WAV). Wrap for browser playback.
       const pcm = Buffer.from(audioBase64, 'base64');
       const wav = pcm16leToWav(pcm, 24000, 1);
       return new NextResponse(wav as any, {
@@ -108,29 +107,30 @@ export async function POST(request: Request) {
       });
     }
 
-    // LiveKit Agent TTS - uses the room's AI agent for speech synthesis
-    if (provider === 'livekit-agent') {
-      // The LiveKit agent handles TTS by sending text to the agent room
+    // Orbit AI Agent TTS - uses the room's AI agent for speech synthesis
+    if (provider === 'orbit-ai-agent') {
+      // The Orbit AI agent handles TTS by sending text to the agent room
       // Agent will speak directly in the room with muted mic for other participants
-      // For API-based TTS, we fall back to Cartesia but mark it as agent-initiated
-      console.log('LiveKit Agent TTS requested - using agent voice synthesis');
+      // For API-based TTS, we fall back to voice synthesis but mark it as agent-initiated
+      console.log('Orbit AI Agent TTS requested - using agent voice synthesis');
       
-      // For now, delegate to Cartesia with agent voice settings
-      // In production, this would dispatch to a running LiveKit agent
-      const apiKey = process.env.CARTESIA_API_KEY;
-      const agentVoiceId = process.env.LIVEKIT_AGENT_VOICE_ID || process.env.CARTESIA_VOICE_ID;
-      const modelId = process.env.CARTESIA_MODEL_ID || 'sonic-3';
+      // For now, delegate to voice synthesis with agent voice settings
+      // In production, this would dispatch to a running Orbit AI agent
+      const apiKey = process.env.ORBIT_AI_VOICE_API_KEY;
+      const agentVoiceId = process.env.ORBIT_AI_AGENT_VOICE_ID || process.env.ORBIT_AI_VOICE_ID;
+      const modelId = process.env.ORBIT_AI_VOICE_MODEL_ID || 'orbit-ai-voice-1';
 
       if (!apiKey || !agentVoiceId) {
         return new NextResponse('Agent voice not configured', { status: 503 });
       }
 
-      const response = await fetch('https://api.cartesia.ai/tts/bytes', {
+      const voiceBaseUrl = process.env.ORBIT_AI_VOICE_BASE_URL || 'https://api.orbit.ai';
+      const response = await fetch(`${voiceBaseUrl}/tts/bytes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': apiKey,
-          'Cartesia-Version': '2025-04-16',
+          'Orbit-AI-Version': '2025-04-16',
         },
         body: JSON.stringify({
           model_id: modelId,
@@ -155,24 +155,25 @@ export async function POST(request: Request) {
       });
     }
 
-    const apiKey = process.env.CARTESIA_API_KEY;
-    const voiceEnv = process.env.CARTESIA_VOICE_ID;
-    const modelId = process.env.CARTESIA_MODEL_ID || 'sonic-3';
+    const apiKey = process.env.ORBIT_AI_VOICE_API_KEY;
+    const voiceEnv = process.env.ORBIT_AI_VOICE_ID;
+    const modelId = process.env.ORBIT_AI_VOICE_MODEL_ID || 'orbit-ai-voice-1';
     const voiceToUse = requestedVoiceId?.trim() || voiceEnv;
 
     if (!apiKey || !voiceToUse) {
-      return new NextResponse('Cartesia not configured', { status: 503 });
+      return new NextResponse('Orbit AI voice not configured', { status: 503 });
     }
 
-    const response = await fetch('https://api.cartesia.ai/tts/bytes', {
+    const voiceBaseUrl = process.env.ORBIT_AI_VOICE_BASE_URL || 'https://api.orbit.ai';
+    const response = await fetch(`${voiceBaseUrl}/tts/bytes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Cartesia docs: Authorization Bearer + Cartesia-Version.
+        // Provider docs: Authorization Bearer + API version header.
         Authorization: `Bearer ${apiKey}`,
         // Keep X-API-Key as a compatibility fallback for some gateways.
         'X-API-Key': apiKey,
-        'Cartesia-Version': '2025-04-16',
+        'Orbit-AI-Version': '2025-04-16',
       },
       body: JSON.stringify({
         model_id: modelId,
@@ -197,7 +198,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Cartesia API error details:', {
+      console.error('Orbit AI voice error details:', {
         status: response.status,
         statusText: response.statusText,
         error: errorData,

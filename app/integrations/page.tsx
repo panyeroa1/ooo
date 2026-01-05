@@ -5,52 +5,52 @@ import styles from '@/styles/Integrations.module.css';
 
 const tools = [
   {
-    id: 'gemini-narration',
-    title: 'Contextual Gemini Narration',
-    description: 'Push translated text to Gemini Live Audio for human-like cadence with minimal delay.',
+    id: 'orbit-ai-narration',
+    title: 'Orbit AI Narration',
+    description: 'Push meeting highlights to Orbit AI live audio for human-like cadence with minimal delay.',
     icon: '🎤',
   },
   {
-    id: 'cartesia-precision',
-    title: 'Cartesia Sonic-3 Voice',
+    id: 'orbit-ai-voice',
+    title: 'Orbit AI Voice Precision',
     description: 'High-fidelity WAV/PCM output with emotion and speed control for narrating every clip.',
     icon: '🎧',
   },
   {
-    id: 'ollama-polish',
-    title: 'Ollama Conversational Polish',
-    description: 'Apply Gemini 3 Flash prompts that tailor tone before hitting the TTS queue.',
+    id: 'orbit-ai-polish',
+    title: 'Orbit AI Conversational Polish',
+    description: 'Apply Orbit AI prompt tuning that tailors tone before hitting the voice queue.',
     icon: '🤖',
   },
   {
     id: 'supabase-gallery',
-    title: 'Supabase Transcript Gallery',
-    description: 'Delta-tracked captions for clip replay, auto-save, and developer hooks.',
+    title: 'Supabase Session Gallery',
+    description: 'Delta-tracked notes for clip replay, auto-save, and developer hooks.',
     icon: '📚',
   },
 
   {
     id: 'meeting-secretary',
     title: 'Meeting Secretary',
-    description: 'Summarize takeaways via Ollama with agenda tracking and action-item extraction.',
+    description: 'Summarize takeaways via Orbit AI with agenda tracking and action-item extraction.',
     icon: '✍️',
   },
   {
     id: 'insights-summoner',
     title: 'Insights Summoner',
-    description: 'Feed transcripts to lightweight HuggingFace LLMs for instant themes.',
+    description: 'Feed notes to Orbit AI insights for instant themes.',
     icon: '📊',
   },
   {
     id: 'slidecraft-studio',
     title: 'SlideCraft Studio',
-    description: 'Use HuggingFace SDXL backend to generate full PPT-style visuals from prompts.',
+    description: 'Use Orbit AI visuals to generate full PPT-style slides from prompts.',
     icon: '🖼️',
   },
   {
     id: 'tone-coach',
     title: 'Tone Coach',
-    description: 'Rotate between Ollama tone models to emphasize warmth, urgency, or calmness.',
+    description: 'Rotate between Orbit AI tone models to emphasize warmth, urgency, or calmness.',
     icon: '🧭',
   },
   {
@@ -75,7 +75,7 @@ export default function IntegrationsPage() {
     try {
       const payload: Record<string, any> = {
         prompt: 'Executive team sync',
-        transcripts: ['Reviewed launch metrics', 'AI translation helping the remote squad'],
+        transcripts: ['Reviewed launch metrics', 'Orbit AI insights helping the remote squad'],
       };
       const res = await fetch(`/api/integrations/tools/${tool.id}`, {
         method: 'POST',
@@ -108,12 +108,12 @@ export default function IntegrationsPage() {
           </div>
           <h1>Integration suite</h1>
           <p>
-            Every AI tool in one place. Pick audio synths, translation engines, and automations that keep your
+            Every Orbit AI tool in one place. Pick voice engines, insight modules, and automations that keep your
             experience superior to the rest.
           </p>
         </div>
         <div className={styles.heroAction}>
-          <button className={styles.primaryButton}>Connect Cartesia & Gemini</button>
+          <button className={styles.primaryButton}>Connect Orbit AI Suite</button>
         </div>
       </section>
 

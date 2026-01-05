@@ -14,16 +14,16 @@ const MAX_MESSAGES = 12;
 function normalizeBaseUrl(baseUrl: string) {
   let normalized = baseUrl.trim();
   if (!normalized) {
-    return 'https://ollama.com';
+    return 'https://orbit.ai';
   }
-  normalized = normalized.replace('api.ollama.com', 'ollama.com');
+  normalized = normalized.replace('api.orbit.ai', 'orbit.ai');
   normalized = normalized.replace(/\/v1\/?$/, '');
   return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
 }
 
 function normalizeModelName(model: string) {
   if (!model) {
-    return 'gpt-oss:120b';
+    return 'orbit-ai-1';
   }
   if (model.includes(':')) {
     return model;
@@ -48,13 +48,13 @@ function buildModelCandidates(model: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.OLLAMA_API_KEY;
-    const rawBaseUrl = process.env.OLLAMA_BASE_URL ?? 'https://ollama.com';
+    const apiKey = process.env.ORBIT_AI_API_KEY;
+    const rawBaseUrl = process.env.ORBIT_AI_BASE_URL ?? 'https://orbit.ai';
     const baseUrl = normalizeBaseUrl(rawBaseUrl);
-    const model = process.env.OLLAMA_MODEL ?? 'gpt-oss:120b';
+    const model = process.env.ORBIT_AI_MODEL ?? 'orbit-ai-1';
 
     if (!apiKey) {
-      return new NextResponse('OLLAMA_API_KEY is not configured', { status: 500 });
+      return new NextResponse('ORBIT_AI_API_KEY is not configured', { status: 500 });
     }
 
     const body = await request.json();
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     const systemPrompt = [
-      'You are the Eburon AI Agent.',
+      'You are the Success Class AI Agent powered by Orbit AI.',
       'You know the app structure, features, and UX.',
       'Use the app knowledge below to answer questions.',
       'If you are unsure, say so and ask a follow-up question.',
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         if (isModelMissing && hasFallback) {
           continue;
         }
-        return new NextResponse(errorText || 'Ollama error', { status: response.status });
+        return new NextResponse(errorText || 'Orbit AI error', { status: response.status });
       }
 
       data = await response.json();
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!data) {
-      return new NextResponse('No response from Ollama', { status: 502 });
+      return new NextResponse('No response from Orbit AI', { status: 502 });
     }
     const reply =
       data?.message?.content ??

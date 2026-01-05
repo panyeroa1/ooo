@@ -13,10 +13,10 @@ export default async function CustomRoomConnection(props: {
 }) {
   const { orbitUrl, token, codec, singlePC } = await props.searchParams;
   if (typeof orbitUrl !== 'string') {
-    return <h2>Missing Orbit URL</h2>;
+    return <h2>Missing Orbit AI URL</h2>;
   }
   if (typeof token !== 'string') {
-    return <h2>Missing Orbit token</h2>;
+    return <h2>Missing Orbit AI token</h2>;
   }
   if (codec !== undefined && !isVideoCodec(codec)) {
     return <h2>Invalid codec, if defined it has to be [{videoCodecs.join(', ')}].</h2>;

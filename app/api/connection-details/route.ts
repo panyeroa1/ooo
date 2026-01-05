@@ -1,5 +1,5 @@
 import { randomString } from '@/lib/client-utils';
-import { getLiveKitURL } from '@/lib/getLiveKitURL';
+import { getOrbitAIURL } from '@/lib/getOrbitAIURL';
 import { ConnectionDetails } from '@/lib/types';
 import { AccessToken, AccessTokenOptions, VideoGrant } from 'livekit-server-sdk';
 import { NextRequest, NextResponse } from 'next/server';
@@ -7,9 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const API_KEY = process.env.LIVEKIT_API_KEY;
-const API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_URL = process.env.LIVEKIT_URL;
+const API_KEY = process.env.ORBIT_AI_VIDEO_API_KEY ?? process.env.LIVEKIT_API_KEY;
+const API_SECRET = process.env.ORBIT_AI_VIDEO_API_SECRET ?? process.env.LIVEKIT_API_SECRET;
+const ORBIT_AI_URL = process.env.ORBIT_AI_URL ?? process.env.LIVEKIT_URL;
 
 const COOKIE_KEY = 'random-participant-postfix';
 
@@ -20,12 +20,12 @@ export async function GET(request: NextRequest) {
     const participantName = request.nextUrl.searchParams.get('participantName');
     const metadata = request.nextUrl.searchParams.get('metadata') ?? '';
     const region = request.nextUrl.searchParams.get('region');
-    if (!LIVEKIT_URL) {
-      throw new Error('LIVEKIT_URL is not defined');
+    if (!ORBIT_AI_URL) {
+      throw new Error('ORBIT_AI_URL is not defined');
     }
-    const livekitServerUrl = region ? getLiveKitURL(LIVEKIT_URL, region) : LIVEKIT_URL;
+    const orbitServerUrl = region ? getOrbitAIURL(ORBIT_AI_URL, region) : ORBIT_AI_URL;
     let randomParticipantPostfix = request.cookies.get(COOKIE_KEY)?.value;
-    if (livekitServerUrl === undefined) {
+    if (orbitServerUrl === undefined) {
       throw new Error('Invalid region');
     }
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     // Return connection details
     const data: ConnectionDetails = {
-      serverUrl: livekitServerUrl,
+      serverUrl: orbitServerUrl,
       roomName: roomName,
       participantToken: participantToken,
       participantName: participantName,
