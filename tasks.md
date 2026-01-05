@@ -2839,6 +2839,97 @@ Test result:
 Known limitations or follow-up tasks:
 - None
 
+Task ID: T-0047
+Title: Update Navbar Transparency
+Status: DONE
+Owner: Miles
+Related repo or service: livekit-meet
+
+START LOG
+
+Timestamp: 2026-01-06 07:18
+Current behavior or state:
+- Navbar background opacity was `0.95`.
+
+Plan and scope for this task:
+- Change `.controlBar` background to `rgba(29, 14, 50, 0.1)`.
+
+Files or modules expected to change:
+- styles/Eburon.module.css
+
+Risks or things to watch out for:
+- None
+
+WORK CHECKLIST
+
+- [x] Update `.controlBar` transparency
+
+END LOG
+
+Timestamp: 2026-01-06 07:19
+Summary of what actually changed:
+- Updated `styles/Eburon.module.css` to set navbar background opacity to `0.1` (90% transparent).
+
+Files actually modified:
+- styles/Eburon.module.css
+
+How it was tested:
+- Visual verification.
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- None
+
+Task ID: T-0048
+Title: Fix Navbar Layout (Right Align Leave/Share)
+Status: DONE
+Owner: Miles
+Related repo or service: livekit-meet
+
+START LOG
+
+Timestamp: 2026-01-06 07:25
+Current behavior or state:
+- "Leave" and "Share" icons might not be strictly right-aligned due to flex behavior.
+
+Plan and scope for this task:
+- details: Update `.controlGroup` to `flex: 1` and `.controlGroupCenter` to `flex: 0 0 auto`.
+- This creates a 3-column layout where side groups expand to edges.
+
+Files or modules expected to change:
+- styles/Eburon.module.css
+
+Risks or things to watch out for:
+- None
+
+WORK CHECKLIST
+
+- [x] Update flex layout in CSS
+
+END LOG
+
+Timestamp: 2026-01-06 07:26
+Summary of what actually changed:
+- Modified `.controlGroup`: removed `min-width`, added `flex: 1`, `justify-content: flex-start`.
+- Modified `.controlGroupCenter`: changed `flex: 1` to `flex: 0 0 auto`.
+- This ensures the Right Group (Leave/Share) is pushed all the way to the right padding.
+
+Files actually modified:
+- styles/Eburon.module.css
+
+How it was tested:
+- Visual verification.
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- None
+
+
+
 
 
 
