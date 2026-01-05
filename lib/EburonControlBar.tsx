@@ -529,85 +529,96 @@ export function EburonControlBar({
 
 
 
-          <div className={styles.screenShareWrapper} ref={micMenuRef}>
-            <button
-              className={`${styles.controlButton} ${isMicEnabled ? styles.controlButtonActive : styles.controlButtonMuted}`}
-              onClick={toggleMicrophone}
-              title={isMicEnabled ? 'Mute microphone' : 'Unmute microphone'}
-            >
-              {isMicEnabled ? <MicIcon /> : <MicOffIcon />}
-            </button>
-            <button
-              className={styles.deviceSelectorTrigger}
-              onClick={async () => {
-                if (!isMicMenuOpen) await ensureMicPermissionForLabels();
-                setIsMicMenuOpen((prev) => !prev);
-              }}
-              title="Select microphone"
-              aria-expanded={isMicMenuOpen}
-              aria-haspopup="listbox"
-            >
-              <ChevronDownIcon />
-            </button>
-            {isMicMenuOpen && audioDevices.length > 0 && (
-              <div className={styles.deviceMenu} role="listbox" aria-label="Select Microphone">
-                {audioDevices.map((device) => (
-                  <button
-                    key={device.deviceId}
-                    className={`${styles.deviceOption} ${selectedAudioDevice === device.deviceId ? styles.deviceOptionActive : ''}`}
-                    onClick={() => switchAudioDevice(device.deviceId)}
-                    role="option"
-                    aria-selected={selectedAudioDevice === device.deviceId}
-                  >
-                    {device.label || `Microphone ${audioDevices.indexOf(device) + 1}`}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <div className={styles.screenShareWrapper} ref={speakerMenuRef}>
-            <button
-              className={`${styles.controlButton} ${isAppMuted ? styles.controlButtonMuted : styles.controlButtonActive}`}
-              onClick={() => onAppMuteToggle?.((prev) => !prev)}
-              title={isAppMuted ? 'Unmute app audio' : 'Mute app audio'}
-            >
-              {isAppMuted ? <SpeakerOffIcon /> : <SpeakerIcon />}
-            </button>
-            <button
-              className={styles.deviceSelectorTrigger}
-              onClick={() => setIsSpeakerMenuOpen((prev) => !prev)}
-              title="Select speaker"
-              aria-expanded={isSpeakerMenuOpen}
-              aria-haspopup="listbox"
-            >
-              <ChevronDownIcon />
-            </button>
-            {isSpeakerMenuOpen && speakerDevices.length > 0 && (
-              <div className={styles.deviceMenu} role="listbox" aria-label="Select Speaker">
-                {speakerDevices.map((device) => (
-                  <button
-                    key={device.deviceId}
-                    className={`${styles.deviceOption} ${selectedSpeakerDevice === device.deviceId ? styles.deviceOptionActive : ''}`}
-                    onClick={async () => {
-                      setSelectedSpeakerDevice(device.deviceId);
-                      setIsSpeakerMenuOpen(false);
-                      try {
-                        await room.switchActiveDevice('audiooutput', device.deviceId);
-                        toast.success(`Switched to ${device.label || 'new speaker'}`);
-                      } catch (error) {
-                        console.error('Failed to switch speaker:', error);
-                        toast.error('Failed to switch speaker');
-                      }
-                    }}
-                    role="option"
-                    aria-selected={selectedSpeakerDevice === device.deviceId}
-                  >
-                    {device.label || `Speaker ${speakerDevices.indexOf(device) + 1}`}
-                  </button>
-                ))}
+          <div className={styles.audioSplitControl}>
+            {/* Speak (Mic) Section */}
+            <div className={`${styles.audioSplitSection} ${styles.audioSplitLeft}`} ref={micMenuRef}>
+              <div className={styles.audioSplitMain} onClick={toggleMicrophone} title={isMicEnabled ? 'Mute microphone' : 'Unmute microphone'}>
+                <span className={styles.audioSplitLabel}>Speak</span>
+                <div className={`${styles.audioSplitIcon} ${isMicEnabled ? styles.iconActive : styles.iconMuted}`}>
+                  {isMicEnabled ? <MicIcon /> : <MicOffIcon />}
+                </div>
               </div>
-            )}
+              <button
+                className={styles.audioSplitDropdown}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!isMicMenuOpen) await ensureMicPermissionForLabels();
+                  setIsMicMenuOpen((prev) => !prev);
+                  setIsSpeakerMenuOpen(false);
+                }}
+                title="Select microphone"
+                aria-expanded={isMicMenuOpen}
+                aria-haspopup="listbox"
+              >
+                <ChevronDownIcon />
+              </button>
+              {isMicMenuOpen && audioDevices.length > 0 && (
+                <div className={styles.deviceMenu} role="listbox" aria-label="Select Microphone">
+                  {audioDevices.map((device) => (
+                    <button
+                      key={device.deviceId}
+                      className={`${styles.deviceOption} ${selectedAudioDevice === device.deviceId ? styles.deviceOptionActive : ''}`}
+                      onClick={() => switchAudioDevice(device.deviceId)}
+                      role="option"
+                      aria-selected={selectedAudioDevice === device.deviceId}
+                    >
+                      {device.label || `Microphone ${audioDevices.indexOf(device) + 1}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.audioSplitDivider} />
+
+            {/* Listen (Speaker) Section */}
+            <div className={`${styles.audioSplitSection} ${styles.audioSplitRight}`} ref={speakerMenuRef}>
+              <div className={styles.audioSplitMain} onClick={() => onAppMuteToggle?.((prev) => !prev)} title={isAppMuted ? 'Unmute app audio' : 'Mute app audio'}>
+                <span className={styles.audioSplitLabel}>Listen</span>
+                <div className={`${styles.audioSplitIcon} ${!isAppMuted ? styles.iconActive : styles.iconMuted}`}>
+                  {isAppMuted ? <SpeakerOffIcon /> : <SpeakerIcon />}
+                </div>
+              </div>
+              <button
+                className={styles.audioSplitDropdown}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSpeakerMenuOpen((prev) => !prev);
+                  setIsMicMenuOpen(false);
+                }}
+                title="Select speaker"
+                aria-expanded={isSpeakerMenuOpen}
+                aria-haspopup="listbox"
+              >
+                <ChevronDownIcon />
+              </button>
+              {isSpeakerMenuOpen && speakerDevices.length > 0 && (
+                <div className={styles.deviceMenu} role="listbox" aria-label="Select Speaker">
+                  {speakerDevices.map((device) => (
+                    <button
+                      key={device.deviceId}
+                      className={`${styles.deviceOption} ${selectedSpeakerDevice === device.deviceId ? styles.deviceOptionActive : ''}`}
+                      onClick={async () => {
+                        setSelectedSpeakerDevice(device.deviceId);
+                        setIsSpeakerMenuOpen(false);
+                        try {
+                          await room.switchActiveDevice('audiooutput', device.deviceId);
+                          toast.success(`Switched to ${device.label || 'new speaker'}`);
+                        } catch (error) {
+                          console.error('Failed to switch speaker:', error);
+                          toast.error('Failed to switch speaker');
+                        }
+                      }}
+                      role="option"
+                      aria-selected={selectedSpeakerDevice === device.deviceId}
+                    >
+                      {device.label || `Speaker ${speakerDevices.indexOf(device) + 1}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

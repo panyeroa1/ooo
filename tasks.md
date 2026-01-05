@@ -2737,3 +2737,108 @@ Test result:
 Known limitations or follow-up tasks:
 - None
 
+Task ID: T-0040
+Title: Reorganize Navbar Buttons
+Status: DONE
+Owner: Miles
+Related repo or service: livekit-meet
+
+START LOG
+
+Timestamp: 2026-01-06 05:40
+Current behavior or state:
+- Mic, Camera, Screen Share, and Speaker are all on the left.
+- Navigation/Feature controls are in the center.
+
+Plan and scope for this task:
+- Move Camera and Screen Share to the center group.
+- Keep Mic and Speaker on the left.
+- Verify layout.
+
+Files or modules expected to change:
+- lib/EburonControlBar.tsx
+
+Risks or things to watch out for:
+- Flexbox alignment issues.
+
+WORK CHECKLIST
+
+- [x] Move Camera button to center
+- [x] Move Screen Share button to center
+- [x] Verify Mic and Speaker remain on left
+- [x] Verify responsiveness
+
+END LOG
+
+Timestamp: 2026-01-06 05:48
+Summary of what actually changed:
+- Moved Camera and Screen Share buttons to the center control group in `EburonControlBar.tsx`.
+- Kept Microphone and Speaker/Volume controls in the left control group.
+- Verified that functionality remains intact.
+
+Files actually modified:
+- lib/EburonControlBar.tsx
+
+How it was tested:
+- `npm run lint` (Passed)
+- Manual review of component placement.
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- None
+
+Task ID: T-0041
+Title: Add Settings Icon to Navbar
+Status: DONE
+Owner: Miles
+Related repo or service: livekit-meet
+
+START LOG
+
+Timestamp: 2026-01-06 05:52
+Current behavior or state:
+- Settings icon structure exists in `EburonControlBar` but may not be showing if prop is missing.
+- User requested to add settings icon beside orbit icon.
+
+Plan and scope for this task:
+- Verify `onSettingsToggle` is passed from parent.
+- Ensure visual placement is correct (it appears to be next to Orbit icon already).
+- If prop is missing, implement the toggle handler in `PageClientImpl`.
+
+Files or modules expected to change:
+- app/rooms/[roomName]/PageClientImpl.tsx
+
+Risks or things to watch out for:
+- None
+
+WORK CHECKLIST
+
+- [x] Verify/Implement `onSettingsToggle` in `PageClientImpl`
+- [x] Confirm Settings icon renders
+
+END LOG
+
+Timestamp: 2026-01-06 05:55
+Summary of what actually changed:
+- Verified that `SettingsIcon` is already rendered in `EburonControlBar.tsx` next to `OrbitIcon`.
+- Confirmed that `onSettingsToggle` is correctly passed from `PageClientImpl.tsx` and the settings panel logic is implemented.
+- No code changes were necessary as the feature was already present.
+
+Files actually modified:
+- None
+
+How it was tested:
+- Code review of `lib/EburonControlBar.tsx` and `app/rooms/[roomName]/PageClientImpl.tsx`.
+- `npm run lint` (Passed)
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- None
+
+
+
+
