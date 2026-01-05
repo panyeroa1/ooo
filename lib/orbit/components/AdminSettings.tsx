@@ -5,7 +5,9 @@ import { Settings, X, Webhook, Languages, Volume2, Save } from 'lucide-react';
 import { TtsProvider } from '../types';
 
 interface AdminSettingsProps {
-  onClose: () => void;
+  onClose?: () => void;
+  activeTab?: 'translation' | 'tts' | 'webhooks' | 'general';
+  hideHeader?: boolean;
 }
 
 interface AdminConfig {
@@ -17,8 +19,11 @@ interface AdminConfig {
   webhookSecret?: string;
 }
 
-export function AdminSettings({ onClose }: AdminSettingsProps) {
-  const [activeTab, setActiveTab] = useState<'translation' | 'tts' | 'webhooks' | 'general'>('translation');
+export function AdminSettings({ onClose, activeTab: externalActiveTab, hideHeader = false }: AdminSettingsProps) {
+  const [localActiveTab, setLocalActiveTab] = useState<'translation' | 'tts' | 'webhooks' | 'general'>('translation');
+  const activeTab = externalActiveTab || localActiveTab;
+  const setActiveTab = (tab: any) => setLocalActiveTab(tab);
+
   const [config, setConfig] = useState<AdminConfig>({
     translationModel: 'internal',
     ttsProvider: 'gemini',
@@ -68,61 +73,67 @@ export function AdminSettings({ onClose }: AdminSettingsProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1f2e] text-white">
+    <div className={`flex flex-col h-full bg-transparent text-white`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <Settings className="w-5 h-5 text-emerald-400" />
-          <h2 className="text-lg font-bold">Admin Settings</h2>
+      {!hideHeader && (
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#1a1f2e]">
+          <div className="flex items-center gap-3">
+            <Settings className="w-5 h-5 text-emerald-400" />
+            <h2 className="text-lg font-bold">Admin Settings</h2>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              title="Close Settings"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
-        <button
-          onClick={onClose}
-          title="Close Settings"
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+      )}
 
       {/* Tabs */}
-      <div className="flex gap-1 p-3 border-b border-white/5 bg-black/20">
-        <button
-          onClick={() => setActiveTab('translation')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'translation'
-              ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20'
-              : 'text-slate-400 hover:bg-white/5'
-          }`}
-        >
-          <Languages className="w-3.5 h-3.5 inline mr-1.5" />
-          Translation
-        </button>
-        <button
-          onClick={() => setActiveTab('tts')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'tts'
-              ? 'bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20'
-              : 'text-slate-400 hover:bg-white/5'
-          }`}
-        >
-          <Volume2 className="w-3.5 h-3.5 inline mr-1.5" />
-          TTS
-        </button>
-        <button
-          onClick={() => setActiveTab('webhooks')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'webhooks'
-              ? 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20'
-              : 'text-slate-400 hover:bg-white/5'
-          }`}
-        >
-          <Webhook className="w-3.5 h-3.5 inline mr-1.5" />
-          Webhooks
-        </button>
-      </div>
+      {!hideHeader && (
+        <div className="flex gap-1 p-3 border-b border-white/5 bg-black/20">
+          <button
+            onClick={() => setActiveTab('translation')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === 'translation'
+                ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20'
+                : 'text-slate-400 hover:bg-white/5'
+            }`}
+          >
+            <Languages className="w-3.5 h-3.5 inline mr-1.5" />
+            Translation
+          </button>
+          <button
+            onClick={() => setActiveTab('tts')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === 'tts'
+                ? 'bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20'
+                : 'text-slate-400 hover:bg-white/5'
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5 inline mr-1.5" />
+            TTS
+          </button>
+          <button
+            onClick={() => setActiveTab('webhooks')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === 'webhooks'
+                ? 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20'
+                : 'text-slate-400 hover:bg-white/5'
+            }`}
+          >
+            <Webhook className="w-3.5 h-3.5 inline mr-1.5" />
+            Webhooks
+          </button>
+        </div>
+      )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className={`flex-1 overflow-y-auto ${hideHeader ? 'p-0' : 'p-4'}`}>
           {activeTab === 'translation' && (
             <div className="space-y-6">
               <div>

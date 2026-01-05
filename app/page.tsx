@@ -3,8 +3,8 @@
 import Image from 'next/image';
 import React, { useEffect, useRef, useState } from 'react';
 import { encodePassphrase, generateRoomId, randomString } from '@/lib/client-utils';
-import styles from '../styles/Home.module.css';
 import { Settings } from 'lucide-react';
+import styles from '../styles/Home.module.css';
 
 function ControlCard() {
   const [e2ee, setE2ee] = useState(false);
@@ -106,7 +106,7 @@ export default function Page() {
             aria-label="Settings" 
             title="Settings"
           >
-            <Settings size={20} />
+            <Settings className="w-5 h-5 text-slate-300" />
           </a>
           <button
             className={styles.themeToggle}
