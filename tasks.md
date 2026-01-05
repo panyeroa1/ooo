@@ -2019,3 +2019,29 @@ Test result:
 Known limitations or follow-up tasks:
 - None
 
+
+Task ID: T-0036
+Title: Upgrade Orbit Translator UI
+Status: DONE
+Owner: Miles
+
+START LOG
+
+Timestamp: 2026-01-05 22:08
+Plan:
+- Standardize OrbitTranslatorVertical sidebar to match Eburon theme.
+- Upgrade to modern "glass + gradient" UI with new animations and scrollbars.
+- Fix layout overlap issues with the bottom navbar.
+
+END LOG
+
+Timestamp: 2026-01-05 22:15
+Changed:
+- Refactored `OrbitTranslatorVertical.tsx` to use new modern UI components (glass/gradient).
+- Added new CSS classes (.sheen, .pulseSoft, .waveBar) to `OrbitTranslator.module.css`.
+- Fixed ChatPanel padding in `Eburon.module.css` to prevent navbar overlap.
+Tests:
+- Manual verification of UI.
+- `npm run build` passed.
+Result: PASS
+Status: DONE
