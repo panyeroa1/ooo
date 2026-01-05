@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { AdminSettings } from '@/lib/orbit/components/AdminSettings';
 import { Languages, Volume2, Webhook, ChevronLeft, Layout, Shield, Activity } from 'lucide-react';
@@ -22,6 +24,7 @@ export default function SettingsPage() {
           <button 
             onClick={() => window.history.back()}
             className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white"
+            title="Go back"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
