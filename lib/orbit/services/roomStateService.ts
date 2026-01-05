@@ -96,3 +96,50 @@ export function raiseHand(userId: string, userName: string) {
 export function lowerHand(userId: string) {
   // Not implemented in DB yet
 }
+
+export async function getParticipantAliases(meetingId: string): Promise<Record<string, string>> {
+  // First get the room UUID from the room code
+  const { data: roomData } = await supabase
+    .from('rooms')
+    .select('id')
+    .eq('room_code', meetingId)
+    .single();
+
+  if (!roomData) return {};
+
+  const { data } = await supabase
+    .from('participants')
+    .select('user_id, display_name')
+    .eq('room_id', roomData.id);
+
+  if (!data) return {};
+
+  const aliases: Record<string, string> = {};
+  data.forEach(p => {
+    if (p.display_name) {
+      aliases[p.user_id] = p.display_name;
+    }
+  });
+  return aliases;
+}
+
+export function subscribeToParticipantAliases(meetingId: string, callback: (aliases: Record<string, string>) => void) {
+  // Initial fetch
+  getParticipantAliases(meetingId).then(callback);
+
+  const channel = supabase.channel(`participants:${meetingId}`)
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'participants' 
+    }, async () => {
+      // Re-fetch everything on change for simplicity, or we could optimize
+      const aliases = await getParticipantAliases(meetingId);
+      callback(aliases);
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AppMode, RoomState, Language, LANGUAGES, AudioSource, EmotionType, EMOTION_COLORS } from '../types';
+import { AppMode, RoomState, Language, LANGUAGES, AudioSource, EmotionType, EMOTION_COLORS, TtsProvider } from '../types';
 import { ChevronDown, Mic, Hand, X, Lock, Play, Share2, LogOut, ChevronUp, Volume2, Loader2, Globe, Sparkles } from 'lucide-react';
 
 interface TranslatorDockProps {
@@ -12,8 +12,6 @@ interface TranslatorDockProps {
   onLanguageChange: (lang: Language) => void; // Restored
   onRaiseHand: () => void;
   audioData?: Uint8Array;
-  audioSource?: AudioSource;
-  onAudioSourceToggle?: () => void;
   liveStreamText?: string;
   translatedStreamText?: string;
   isTtsLoading?: boolean;
@@ -25,14 +23,20 @@ interface TranslatorDockProps {
   onAuthToggle: (meetingId?: string) => void;
   isMinimized: boolean;
   onMinimizeToggle: () => void;
-  transcriptionEngine?: 'webspeech' | 'deepgram' | 'gemini';
-  onEngineChange?: (engine: 'webspeech' | 'deepgram' | 'gemini') => void;
+  transcriptionEngine?: 'webspeech' | 'deepgram' | 'gemini' | 'whisper';
+  onEngineChange?: (engine: 'webspeech' | 'deepgram' | 'gemini' | 'whisper') => void;
   audioDevices?: MediaDeviceInfo[];
   selectedDeviceId?: string;
   onDeviceIdChange?: (deviceId: string) => void;
   audioOutputDevices?: MediaDeviceInfo[];
   selectedOutputDeviceId?: string;
   onOutputDeviceIdChange?: (deviceId: string) => void;
+  audioSource?: AudioSource;
+  onAudioSourceChange?: (source: AudioSource) => void;
+  isVoiceFocusEnabled?: boolean;
+  onVoiceFocusToggle?: () => void;
+  ttsProvider?: TtsProvider;
+  onTtsProviderChange?: (provider: TtsProvider) => void;
 }
 
 const AudioVisualizer: React.FC<{ data: Uint8Array; colorClass?: string }> = ({ data, colorClass = 'bg-white' }) => {
@@ -84,8 +88,6 @@ const TranslatorDock: React.FC<TranslatorDockProps> = ({
   liveStreamText,
   // New props
   audioData,
-  audioSource,
-  onAudioSourceToggle,
   translatedStreamText,
   isTtsLoading,
   emotion,
@@ -96,7 +98,13 @@ const TranslatorDock: React.FC<TranslatorDockProps> = ({
   onDeviceIdChange,
   audioOutputDevices = [],
   selectedOutputDeviceId = '',
-  onOutputDeviceIdChange
+  onOutputDeviceIdChange,
+  audioSource = 'mic',
+  onAudioSourceChange,
+  isVoiceFocusEnabled = false,
+  onVoiceFocusToggle,
+  ttsProvider = 'gemini',
+  onTtsProviderChange
 }) => {
   const [meetingIdInput, setMeetingIdInput] = React.useState(meetingId || '');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
@@ -234,6 +242,150 @@ const TranslatorDock: React.FC<TranslatorDockProps> = ({
                     </button>
                   ))
                 )}
+
+                {/* Audio Source Selection */}
+                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-b border-white/5 my-1 flex items-center justify-between">
+                  <span>Audio Source</span>
+                  <Share2 className="w-3 h-3 text-emerald-500/50" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 p-2">
+                  <button
+                    onClick={() => onAudioSourceChange?.('mic')}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
+                      audioSource === 'mic'
+                        ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
+                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300'
+                    }`}
+                  >
+                    <Mic className={`w-5 h-5 ${audioSource === 'mic' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <span className="text-[10px] font-semibold">Microphone</span>
+                  </button>
+                  <button
+                    onClick={() => onAudioSourceChange?.('system')}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
+                      audioSource === 'system'
+                        ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
+                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300'
+                    }`}
+                  >
+                    <Share2 className={`w-5 h-5 ${audioSource === 'system' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <span className="text-[10px] font-semibold">System/Tab</span>
+                  </button>
+                </div>
+
+                {/* STT Engine */}
+                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-b border-white/5 my-1 flex items-center justify-between">
+                  <span>STT Engine</span>
+                  <Sparkles className="w-3 h-3 text-indigo-400/50" />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 p-1.5">
+                  <button
+                    onClick={() => onEngineChange?.('gemini')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      transcriptionEngine === 'gemini' 
+                        ? 'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${transcriptionEngine === 'gemini' ? 'bg-indigo-400' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Eburon Live</span>
+                  </button>
+                  <button
+                    onClick={() => onEngineChange?.('whisper')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      transcriptionEngine === 'whisper' 
+                        ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${transcriptionEngine === 'whisper' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Whisper HF</span>
+                  </button>
+                  <button
+                    onClick={() => onEngineChange?.('deepgram')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      transcriptionEngine === 'deepgram' 
+                        ? 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${transcriptionEngine === 'deepgram' ? 'bg-blue-400' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Deepgram</span>
+                  </button>
+                  <button
+                    onClick={() => onEngineChange?.('webspeech')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      transcriptionEngine === 'webspeech' 
+                        ? 'bg-slate-500/10 text-slate-300 ring-1 ring-slate-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${transcriptionEngine === 'webspeech' ? 'bg-slate-300' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Web Speech</span>
+                  </button>
+                </div>
+
+                {/* TTS Provider */}
+                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-b border-white/5 my-1 flex items-center justify-between">
+                  <span>TTS Provider</span>
+                  <Volume2 className="w-3 h-3 text-violet-400/50" />
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 p-1.5">
+                  <button
+                    onClick={() => onTtsProviderChange?.('gemini')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      ttsProvider === 'gemini' 
+                        ? 'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${ttsProvider === 'gemini' ? 'bg-indigo-400' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Gemini</span>
+                  </button>
+                  <button
+                    onClick={() => onTtsProviderChange?.('deepgram')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      ttsProvider === 'deepgram' 
+                        ? 'bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${ttsProvider === 'deepgram' ? 'bg-violet-400' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Deepgram</span>
+                  </button>
+                  <button
+                    onClick={() => onTtsProviderChange?.('cartesia')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      ttsProvider === 'cartesia' 
+                        ? 'bg-pink-500/10 text-pink-400 ring-1 ring-pink-500/20' 
+                        : 'hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${ttsProvider === 'cartesia' ? 'bg-pink-400' : 'bg-slate-600'}`} />
+                    <span className="text-[11px] font-medium">Cartesia</span>
+                  </button>
+                </div>
+
+                {/* Voice Focus Toggle */}
+                <button
+                  onClick={onVoiceFocusToggle}
+                  className={`mx-2 my-1 flex items-center justify-between px-3 py-2.5 rounded-lg transition-all border border-white/5 ${
+                    isVoiceFocusEnabled 
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-100 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles className={`w-4 h-4 ${isVoiceFocusEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+                    <div className="flex flex-col items-start leading-tight">
+                      <span className="text-xs font-bold tracking-tight">Audio Voice Focus</span>
+                      <span className="text-[9px] text-slate-500">{isVoiceFocusEnabled ? 'Active Filter' : 'Standard Audio'}</span>
+                    </div>
+                  </div>
+                  <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-300 ${isVoiceFocusEnabled ? 'bg-emerald-500/40' : 'bg-slate-700'}`}>
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-300 ${isVoiceFocusEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
 
                 {/* Visualizer inside dropdown when speaking */}
                 {isMeSpeaking && audioData && (

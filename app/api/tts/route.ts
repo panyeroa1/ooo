@@ -5,7 +5,8 @@ export const runtime = 'nodejs';
 type TtsRequestBody = {
   text: string;
   voiceId?: string;
-  provider?: 'orbit-ai' | 'orbit-ai-voice' | 'orbit-ai-agent' | 'cartesia';
+  provider?: 'orbit-ai' | 'orbit-ai-voice' | 'orbit-ai-agent' | 'cartesia' | 'deepgram';
+  language?: string;
 };
 
 function pcm16leToWav(pcm: Buffer, sampleRate = 24000, channels = 1): Buffer {
@@ -34,10 +35,57 @@ function pcm16leToWav(pcm: Buffer, sampleRate = 24000, channels = 1): Buffer {
 
 export async function POST(request: Request) {
   try {
-    const { text, voiceId: requestedVoiceId, provider = 'orbit-ai-voice' } = (await request.json()) as TtsRequestBody;
+    const { text, voiceId: requestedVoiceId, provider = 'orbit-ai-voice', language = 'en' } = (await request.json()) as TtsRequestBody;
 
     if (!text) {
       return new NextResponse('Missing text', { status: 400 });
+    }
+
+    // Deepgram Aura 2 TTS
+    if (provider === 'deepgram') {
+      const apiKey = process.env.DEEPGRAM_API_KEY;
+      if (!apiKey) {
+        return new NextResponse('Deepgram API key not configured', { status: 503 });
+      }
+
+      // Map language to Deepgram Aura 2 voice model
+      // Format: aura-2-{voice}-{lang}, e.g., aura-2-rhea-nl, aura-2-athena-en
+      const voiceMap: Record<string, string> = {
+        'en': 'aura-2-athena-en',
+        'nl': 'aura-2-rhea-nl',
+        'es': 'aura-2-lucia-es',
+        'fr': 'aura-2-lea-fr',
+        'de': 'aura-2-katja-de',
+        'it': 'aura-2-giulia-it',
+        'pt': 'aura-2-mariana-pt',
+        'zh': 'aura-2-mei-zh',
+        'ja': 'aura-2-yuki-ja',
+        'ko': 'aura-2-jiyoung-ko',
+      };
+      const model = requestedVoiceId || voiceMap[language.substring(0, 2)] || 'aura-2-athena-en';
+
+      const response = await fetch(`https://api.deepgram.com/v1/speak?model=${model}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${apiKey}`,
+          'Content-Type': 'text/plain',
+        },
+        body: text,
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error('Deepgram TTS Error:', err);
+        return new NextResponse(err, { status: response.status });
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      return new NextResponse(audioBuffer, {
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'no-cache',
+        },
+      });
     }
 
     if (provider === 'cartesia') {

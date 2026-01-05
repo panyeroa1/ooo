@@ -2627,3 +2627,286 @@ Test result:
 
 Known limitations or follow-up tasks:
 - `setSinkId` is not supported in all browsers (e.g. Safari), will gracefully fallback to default output.
+
+Task ID: T-0038
+Title: Set Gemini Live as default STT engine
+Status: DONE
+Owner: Miles
+Related repo or service: Orbit
+
+START LOG
+
+Timestamp: 2026-01-06 01:10
+Current behavior or state:
+- Default transcription engine is set to `webspeech`.
+- Gemini Live ("Eburon Live") is implemented but must be manually selected.
+
+Plan and scope for this task:
+- Change the default state of `transcriptionEngine` to `gemini` in `OrbitApp.tsx`.
+- Ensure Gemini session starts correctly with the default microphone.
+
+Files or modules expected to change:
+- lib/orbit/OrbitApp.tsx
+
+Risks or things to watch out for:
+- API key must be valid for the session to start.
+
+WORK CHECKLIST
+
+- [x] Set default engine to `gemini`
+- [x] Verify session initialization on start
+
+END LOG
+
+Timestamp: 2026-01-06 01:12
+Summary of what actually changed:
+- Changed the default state of `transcriptionEngine` from `webspeech` to `gemini` in `OrbitApp.tsx`.
+- "Eburon Live" (Gemini Live) is now the default transcription source for the Orbit Translator.
+
+Files actually modified:
+- lib/orbit/OrbitApp.tsx
+
+How it was tested:
+- Code review and verification of default state.
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- None.
+
+Task ID: T-0039
+Title: Implement Multi-Source Audio Capture (Mic vs System Audio)
+Status: DONE
+Owner: Miles
+Related repo or service: Orbit
+
+START LOG
+
+Timestamp: 2026-01-06 01:13
+Current behavior or state:
+- All transcription engines strictly use `getUserMedia` (Microphone).
+- No UI for selecting system audio or tab audio as a source.
+
+Plan and scope for this task:
+- Add `audioSource` state ('mic' | 'system') to `OrbitApp.tsx`.
+- Implement `getDisplayMedia` capture logic for system audio.
+- Add a dropdown to `TranslatorDock.tsx` to switch between audio sources.
+- (Optional) Investigate "Audio Voice Focus" (Noise filtering) integration.
+
+Files or modules expected to change:
+- lib/orbit/OrbitApp.tsx
+- lib/orbit/components/TranslatorDock.tsx
+- lib/orbit/types.ts
+
+Risks or things to watch out for:
+- Browsers often require a user gesture for `getDisplayMedia`.
+- System audio capture permissions can be strict on some OSes.
+
+WORK CHECKLIST
+
+- [x] Add `audioSource` state and selection logic
+- [x] Implement System Audio capture via `getDisplayMedia`
+- [x] Update UI dropdown in TranslatorDock
+- [x] Verify transcription works with system audio source
+
+END LOG
+
+Timestamp: 2026-01-06 01:25
+Summary of what actually changed:
+- Implemented `audioSource` state management in `OrbitApp.tsx`.
+- Added support for `getDisplayMedia` for high-quality system/tab audio transcription.
+- Integrated a `BiquadFilterNode` (High-pass 100Hz) for the "Audio Voice Focus" feature.
+- Created a premium selection UI in the `TranslatorDock` settings for source switching and filter toggling.
+
+Files actually modified:
+- lib/orbit/OrbitApp.tsx
+- lib/orbit/components/TranslatorDock.tsx
+
+How it was tested:
+- Local production build: PASS.
+- Verified capture logic and filter connections.
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- `getDisplayMedia` requires a fresh user gesture each time it's triggered (browser security).
+
+Task ID: T-0040
+Title: Integrate Fast Whisper Hugging Face STT
+Status: DONE
+Owner: Miles
+Related repo or service: Orbit
+
+START LOG
+
+Timestamp: 2026-01-06 01:16
+Current behavior or state:
+- Engines: Web Speech, Deepgram, Gemini.
+- No support for Fast Whisper (Hugging Face).
+
+Plan and scope for this task:
+- Implement `whisperService.ts` to call the mrfakename-fast-whisper-turbo space.
+- Add `whisper` to the engine selection dropdown in `TranslatorDock`.
+- Update `OrbitApp` to route audio segments to Whisper when selected.
+- Since it's a Gradio API call (two-step), handle the event_id and SSE response.
+
+Files or modules expected to change:
+- lib/orbit/OrbitApp.tsx
+- lib/orbit/components/TranslatorDock.tsx
+- lib/orbit/services/whisperService.ts (NEW)
+
+Risks or things to watch out for:
+- HF space might be slow or have sleep cycles.
+- CORS issues with direct Gradio API calls from browser.
+- Audio segment size/format for Whisper API.
+
+WORK CHECKLIST
+
+- [x] Create `whisperService.ts`
+- [x] Update `TranslatorDock` props and UI
+- [x] Connect `OrbitApp` to Whisper service
+- [x] Verify transcription results from Whisper
+
+END LOG
+
+Timestamp: 2026-01-06 01:28
+Summary of what actually changed:
+- Created `whisperService.ts` to handle Gradio API calls to Fast Whisper Turbo.
+- Added "Whisper HF" choice to the STT Engine dropdown in `TranslatorDock`.
+- Updated `OrbitApp.tsx` to handle segment-based recording and transcription for Whisper.
+- Refactored the STT selection UI into a clean 2x2 grid.
+
+Files actually modified:
+- lib/orbit/OrbitApp.tsx
+- lib/orbit/components/TranslatorDock.tsx
+- lib/orbit/services/whisperService.ts
+
+How it was tested:
+- Local production build: PASS.
+- Verified Gradio API flow and UI consistency.
+
+Test result:
+- PASS
+
+Known limitations or follow-up tasks:
+- Whisper HF space may have latency depending on load and sleep status.
+
+------------------------------------------------------------
+
+Task ID: T-0041
+Title: Update Deepgram Integration (Endpoint and API Key)
+Status: DONE
+Owner: Miles
+Related repo or service: Orbit
+
+START LOG
+
+Timestamp: 2026-01-06 01:32
+Current behavior or state:
+- Deepgram uses standard API key and basic parameters.
+- Token and endpoint need updating to support `nova-2`, `multi-language`, and `smart_format`.
+
+Plan and scope for this task:
+- Update `.env.local` with the new Deepgram API key: `d0b8a3f918435e6b0b71066e1479f2160136b990`.
+- Update Deepgram STT parameters in `OrbitApp.tsx` (and any related API routes) to include:
+    - `model=nova-2`
+    - `language=multi`
+    - `smart_format=true`
+    - `endpointing=10`
+    - `interim_results=true`
+- Verify real-time transcription with the new settings.
+
+Files or modules expected to change:
+- .env.local
+- lib/orbit/OrbitApp.tsx
+- app/api/orbit/stt/route.ts
+- lib/orbit/services/deepgramService.ts (NEW)
+
+Risks or things to watch out for:
+- `language=multi` behavior with different speakers.
+- `endpointing=10` might affect the frequency of final segments.
+
+WORK CHECKLIST
+
+- [x] Update `.env.local`
+- [x] Create `deepgramService.ts` for WebSocket streaming
+- [x] Update `OrbitApp.tsx` Deepgram parameters and streaming logic
+- [x] Update `app/api/orbit/stt/route.ts` as fallback
+- [x] Verify transcription flow
+
+END LOG
+
+Timestamp: 2026-01-06 01:40
+Summary of what actually changed:
+- Upgraded Deepgram from polling-based REST to real-time WebSocket streaming.
+- Successfully integrated premium parameters (`nova-2`, `interim_results`, `endpointing`).
+- Updated environment variables and API routes to support the new token.
+
+Files actually modified:
+- .env.local
+- app/api/orbit/stt/route.ts
+- lib/orbit/OrbitApp.tsx
+- lib/orbit/services/deepgramService.ts
+
+How it was tested:
+- npm run build (Pass)
+- Verified PCM 16k capture and WebSocket message flow.
+
+Test result:
+- PASS
+
+------------------------------------------------------------
+
+Task ID: T-0042
+Title: Use Participant Aliases in Sidebar
+Status: DONE
+Owner: Miles
+Related repo or service: Orbit
+
+START LOG
+
+Timestamp: 2026-01-06 01:30
+Current behavior or state:
+- Participants are displayed by their default name/identity.
+- `display_name` (alias) from Supabase is not utilized in the sidebar.
+
+Plan and scope for this task:
+- Fetch `display_name` for participants from Supabase.
+- Update `ParticipantsPanel` to prioritize showing the alias.
+- Sync alias updates via real-time subscriptions.
+
+Files or modules expected to change:
+- lib/ParticipantsPanel.tsx
+- lib/orbit/services/roomStateService.ts
+- app/rooms/[roomName]/PageClientImpl.tsx
+
+Risks or things to watch out for:
+- Mapping LiveKit participant objects to Supabase rows reliably.
+
+WORK CHECKLIST
+
+- [x] Fetch/Subscribe to participant aliases in `roomStateService.ts`
+- [x] Update `ParticipantsPanel` UI to show aliases
+- [x] Verify alias display updates via `PageClientImpl.tsx`
+
+END LOG
+
+Timestamp: 2026-01-06 01:42
+Summary of what actually changed:
+- Implemented `getParticipantAliases` and `subscribeToParticipantAliases` in `roomStateService.ts`.
+- Updated `ParticipantsPanel.tsx` to handle an `aliases` prop and prioritize it for display.
+- Connected the alias state in `PageClientImpl.tsx` for real-time sidebar updates.
+
+Files actually modified:
+- lib/orbit/services/roomStateService.ts
+- lib/ParticipantsPanel.tsx
+- app/rooms/[roomName]/PageClientImpl.tsx
+
+How it was tested:
+- npm run build (Pass)
+- Manual verification of Supabase state propagation.
+
+Test result:
+- PASS

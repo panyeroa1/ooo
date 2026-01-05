@@ -19,11 +19,14 @@ export async function POST(request: Request) {
     // Convert blob to buffer
     const arrayBuffer = await audioBlob.arrayBuffer();
 
-    let dgUrl = 'https://api.deepgram.com/v1/listen?model=nova-2&punctuate=true&smart_format=true';
-    if (language === 'auto') {
-      dgUrl += '&detect_language=true';
-    } else {
-      dgUrl += `&language=${language}`;
+    // Use the parameters from the user's provided endpoint template
+    let dgUrl = 'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=multi';
+    
+    // If the client explicitly sent auto or another language, we could override, 
+    // but the user's request suggests "language=multi" is the way to go.
+    if (language !== 'auto' && language !== 'multi') {
+      // If a specific language is selected in the UI, we respect it
+      dgUrl = `https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${language}`;
     }
 
     // Call Deepgram API

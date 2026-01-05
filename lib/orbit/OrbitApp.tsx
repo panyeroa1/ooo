@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { transcribeWithWhisper } from './services/whisperService';
 import { supabase } from './services/supabaseClient';
-import { AppMode, Language, LANGUAGES, RoomState, AudioSource, EmotionType, EMOTION_COLORS } from './types';
+import { AppMode, Language, LANGUAGES, RoomState, AudioSource, EmotionType, EMOTION_COLORS, TtsProvider } from './types';
 import TranslatorDock from './components/TranslatorDock';
 import ErrorBanner from './components/ErrorBanner';
 import * as orbitService from './services/orbitService';
 import * as roomStateService from './services/roomStateService';
 import { startTranscriptionSession } from './services/geminiService';
+import { startDeepgramSession } from './services/deepgramService';
 
 
 const getStoredUserId = () => {
@@ -38,12 +40,13 @@ export function OrbitApp() {
   const [isDockMinimized, setIsDockMinimized] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
-  const [transcriptionEngine, setTranscriptionEngine] = useState<'webspeech' | 'deepgram' | 'gemini'>('webspeech');
+  const [transcriptionEngine, setTranscriptionEngine] = useState<'webspeech' | 'deepgram' | 'gemini' | 'whisper'>('gemini');
   
   // Deepgram / Gemini Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const geminiSessionRef = useRef<any>(null);
+  const deepgramSessionRef = useRef<any>(null);
   const reportError = useCallback((message: string, error?: any) => {
     console.error(message, error);
     setErrorMessage(message + (error?.message ? `: ${error.message}` : ''));
@@ -109,6 +112,10 @@ export function OrbitApp() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedOutputDeviceId, setSelectedOutputDeviceId] = useState<string>('');
+  const [audioSource, setAudioSource] = useState<AudioSource>('mic');
+  const [isVoiceFocusEnabled, setIsVoiceFocusEnabled] = useState(false);
+  const [ttsProvider, setTtsProvider] = useState<TtsProvider>('gemini');
+  const systemStreamRef = useRef<MediaStream | null>(null);
 
   // Queues for sequential processing
   const processingQueueRef = useRef<any[]>([]);
@@ -155,6 +162,36 @@ export function OrbitApp() {
     navigator.mediaDevices.addEventListener('devicechange', updateDevices);
     return () => navigator.mediaDevices.removeEventListener('devicechange', updateDevices);
   }, [updateDevices]);
+
+  const handleAudioSourceChange = async (source: AudioSource) => {
+    if (source === 'system') {
+      try {
+        // System audio requires a user gesture. This function should be called from an onClick.
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+        systemStreamRef.current = stream;
+        setAudioSource('system');
+        
+        // Handle stream ending (e.g. user stops sharing)
+        stream.getVideoTracks()[0].onended = () => {
+          systemStreamRef.current = null;
+          setAudioSource('mic');
+        };
+      } catch (err) {
+        console.error("Failed to get system audio", err);
+        reportError("System audio capture failed. Falling back to microphone.");
+        setAudioSource('mic');
+      }
+    } else {
+      if (systemStreamRef.current) {
+        systemStreamRef.current.getTracks().forEach(t => t.stop());
+        systemStreamRef.current = null;
+      }
+      setAudioSource('mic');
+    }
+  };
 
   const splitSentences = (text: string): string[] => {
     if (!text.trim()) return [];
@@ -285,10 +322,15 @@ export function OrbitApp() {
 
         // 2. TTS
         if (modeRef.current === 'listening') {
-             console.log(`[Pipeline] 6. Fetching TTS...`);
-             const ttsRes = await fetch('/api/orbit/tts', {
+             console.log(`[Pipeline] 6. Fetching TTS with provider: ${ttsProvider}...`);
+             const ttsRes = await fetch('/api/tts', {
                 method: 'POST',
-                body: JSON.stringify({ text: translated })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  text: translated, 
+                  provider: ttsProvider,
+                  language: selectedLanguageRef.current.code 
+                })
              });
              const arrayBuffer = await ttsRes.arrayBuffer();
              console.log(`[Pipeline] 7. TTS Audio received: ${arrayBuffer.byteLength} bytes`);
@@ -307,18 +349,24 @@ export function OrbitApp() {
         isProcessingRef.current = false;
         processNextInQueue();
     }
-  }, [playNextAudio]);
+  }, [playNextAudio, ttsProvider]);
 
-  // Deepgram Recording Loop
+  // Segment-based Recording Loop (Deepgram / Whisper)
   useEffect(() => {
-    if (mode === 'speaking' && transcriptionEngine === 'deepgram') {
+    if (mode === 'speaking' && (transcriptionEngine === 'deepgram' || transcriptionEngine === 'whisper')) {
       let recorder: MediaRecorder;
       
       const startRecording = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined } 
-          });
+          let stream: MediaStream;
+          if (audioSource === 'system' && systemStreamRef.current) {
+            stream = systemStreamRef.current;
+          } else {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined } 
+            });
+          }
+          
           recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
           mediaRecorderRef.current = recorder;
 
@@ -341,20 +389,22 @@ export function OrbitApp() {
               formData.append('language', selectedLanguageRef.current.code === 'auto' ? 'auto' : selectedLanguageRef.current.code);
 
               try {
-                const res = await fetch('/api/orbit/stt', { method: 'POST', body: formData });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.transcript && data.transcript.trim()) {
-                        console.log(`[Eburon Pro] Transcript: "${data.transcript}"`);
-                        shipSegment(data.transcript); 
-                        setLastFinalText(prev => prev + ' ' + data.transcript);
-                    }
+                let transcript = '';
+                if (transcriptionEngine === 'whisper') {
+                  console.log(`[Whisper HF] Sending segment...`);
+                  transcript = await transcribeWithWhisper(blob);
+                }
+
+                if (transcript && transcript.trim()) {
+                    console.log(`[STT] ${transcriptionEngine}: "${transcript}"`);
+                    shipSegment(transcript); 
+                    setLastFinalText(prev => prev + ' ' + transcript);
                 }
               } catch (e) {
-                console.error("Eburon Pro send error", e);
+                console.error(`${transcriptionEngine} send error`, e);
               }
             }
-          }, 2000); // Send every 2 seconds
+          }, transcriptionEngine === 'whisper' ? 5000 : 2000); // Whisper might need slightly longer segments
 
           return () => {
             clearInterval(interval);
@@ -370,71 +420,102 @@ export function OrbitApp() {
       const cleanupPromise = startRecording();
       return () => { cleanupPromise.then(cleanup => cleanup && cleanup()); };
     }
-  }, [mode, transcriptionEngine, shipSegment, selectedDeviceId]);
+  }, [mode, transcriptionEngine, shipSegment, selectedDeviceId, audioSource]);
 
-  // Gemini Recording Loop
+  // Streaming Recording (Gemini & Deepgram)
   useEffect(() => {
-    if (mode === 'speaking' && transcriptionEngine === 'gemini') {
+    if (mode === 'speaking' && (transcriptionEngine === 'gemini' || transcriptionEngine === 'deepgram')) {
       let audioContext: AudioContext;
       let processor: ScriptProcessorNode;
       let stream: MediaStream;
 
-      const startGeminiSession = async () => {
+      const startSession = async () => {
         try {
-          geminiSessionRef.current = await startTranscriptionSession(
-            (text) => {
-               if (text.trim()) {
-                 console.log(`[Eburon Live] Transcript: "${text}"`);
-                 shipSegment(text);
-                 setLastFinalText(prev => prev + ' ' + text);
-               }
-            },
-            () => {
-               console.log("[Eburon Live] Session ended");
-            },
-            selectedLanguageRef.current.name || "English"
-          );
+          if (transcriptionEngine === 'gemini') {
+            geminiSessionRef.current = await startTranscriptionSession(
+              (text) => {
+                 if (text.trim()) {
+                   console.log(`[Gemini Live] Transcript: "${text}"`);
+                   shipSegment(text);
+                   setLastFinalText(prev => prev + ' ' + text);
+                 }
+              },
+              () => { console.log("[Gemini Live] Session ended"); },
+              selectedLanguageRef.current.name || "English"
+            );
+          } else if (transcriptionEngine === 'deepgram') {
+             deepgramSessionRef.current = await startDeepgramSession(
+               (text, isFinal) => {
+                  if (text.trim()) {
+                    console.log(`[Deepgram Live] ${isFinal ? "[FINAL]" : "[Interim]"}: "${text}"`);
+                    if (isFinal) {
+                      shipSegment(text);
+                      setLastFinalText(prev => prev + ' ' + text);
+                      setLivePartialText('');
+                    } else {
+                      setLivePartialText(text);
+                    }
+                  }
+               },
+               () => { console.log("[Deepgram Live] Session ended"); },
+               selectedLanguageRef.current.code || "multi"
+             );
+          }
 
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined } 
-          });
+          stream = (audioSource === 'system' && systemStreamRef.current) 
+            ? systemStreamRef.current 
+            : await navigator.mediaDevices.getUserMedia({ 
+                audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined } 
+              });
+          
           audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
           const source = audioContext.createMediaStreamSource(stream);
           processor = audioContext.createScriptProcessor(4096, 1, 1);
 
-          source.connect(processor);
+          if (isVoiceFocusEnabled) {
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 100;
+            source.connect(filter);
+            filter.connect(processor);
+          } else {
+            source.connect(processor);
+          }
+          
           processor.connect(audioContext.destination);
 
           processor.onaudioprocess = (e) => {
             const inputData = e.inputBuffer.getChannelData(0);
-            // Convert to 16-bit PCM
             const pcm16 = new Int16Array(inputData.length);
             for (let i = 0; i < inputData.length; i++) {
               pcm16[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
             }
-            // Base64 encode
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
-            if (geminiSessionRef.current) {
+
+            if (transcriptionEngine === 'gemini' && geminiSessionRef.current) {
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
               geminiSessionRef.current.sendAudio(base64);
+            } else if (transcriptionEngine === 'deepgram' && deepgramSessionRef.current) {
+              deepgramSessionRef.current.sendAudio(pcm16.buffer);
             }
           };
 
           return () => {
             if (geminiSessionRef.current) geminiSessionRef.current.stop();
+            if (deepgramSessionRef.current) deepgramSessionRef.current.stop();
             if (processor) processor.disconnect();
             if (audioContext) audioContext.close();
-            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (stream && audioSource !== 'system') stream.getTracks().forEach(t => t.stop());
           };
         } catch (e) {
-          console.error("Eburon Live Init Error", e);
-          setErrorMessage("Microphone access denied for Eburon Live");
+          console.error("Transcription Session Init Error", e);
+          setErrorMessage("Microphone access denied or connection failed");
         }
       };
 
-      const cleanupPromise = startGeminiSession();
+      const cleanupPromise = startSession();
       return () => { cleanupPromise.then(cleanup => cleanup && cleanup()); };
     }
-  }, [mode, transcriptionEngine, shipSegment, selectedDeviceId]);
+  }, [mode, transcriptionEngine, shipSegment, selectedDeviceId, audioSource, isVoiceFocusEnabled]);
 
   const toggleListen = async () => {
     const ctx = ensureAudioContext(); 
@@ -697,6 +778,14 @@ export function OrbitApp() {
           audioOutputDevices={audioOutputDevices}
           selectedOutputDeviceId={selectedOutputDeviceId}
           onOutputDeviceIdChange={setSelectedOutputDeviceId}
+
+          audioSource={audioSource}
+          onAudioSourceChange={handleAudioSourceChange}
+          isVoiceFocusEnabled={isVoiceFocusEnabled}
+          onVoiceFocusToggle={() => setIsVoiceFocusEnabled(!isVoiceFocusEnabled)}
+
+          ttsProvider={ttsProvider}
+          onTtsProviderChange={setTtsProvider}
 
           audioData={audioData}
           translatedStreamText={translatedStreamText}

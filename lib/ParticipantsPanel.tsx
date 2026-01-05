@@ -117,6 +117,7 @@ export function ParticipantsPanel({
   waitingList,
   onAdmitParticipant,
   admittedIds,
+  aliases = {},
 }: {
   alias?: string;
   onDirectMessage?: (participantIdentity: string, participantName: string) => void;
@@ -125,6 +126,7 @@ export function ParticipantsPanel({
   waitingList: { identity: string; name: string }[];
   onAdmitParticipant: (identity: string) => void;
   admittedIds: Set<string>;
+  aliases?: Record<string, string>;
 }) {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
@@ -307,8 +309,9 @@ export function ParticipantsPanel({
             const isCameraEnabled = participant.isCameraEnabled;
             const isAudioMuted = mutedParticipants.has(participant.identity);
             const isHandRaised = participant.attributes?.handRaised === 'true';
-            const fullName = (participant.name || participant.identity || 'Guest').trim() || 'Guest';
-            const shortName = fullName.slice(0, 7);
+            const aliasName = aliases[participant.identity];
+            const fullName = (aliasName || participant.name || participant.identity || 'Guest').trim() || 'Guest';
+            const shortName = fullName.length > 7 ? fullName.slice(0, 7) + '...' : fullName;
             const cameraTrack = trackReferences.find(
               (track) =>
                 track.participant.identity === participant.identity &&

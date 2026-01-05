@@ -10,13 +10,14 @@ import { useAuth } from '@/components/AuthProvider';
 import { RecordingIndicator } from '@/lib/RecordingIndicator';
 import { ConnectionDetails } from '@/lib/types';
 import { EburonControlBar } from '@/lib/EburonControlBar';
-import { subscribeToRoom, tryAcquireSpeaker, releaseSpeaker } from '@/lib/orbit/services/roomStateService';
+import { subscribeToRoom, tryAcquireSpeaker, releaseSpeaker, subscribeToParticipantAliases } from '@/lib/orbit/services/roomStateService';
 import { RoomState } from '@/lib/orbit/types';
 
 
 import { ChatPanel } from '@/lib/ChatPanel';
 import { ParticipantsPanel } from '@/lib/ParticipantsPanel';
 import { OrbitTranslatorVertical } from '@/lib/orbit/components/OrbitTranslatorVertical';
+import { AdminSettings } from '@/lib/orbit/components/AdminSettings';
 import { LiveCaptions } from '@/lib/LiveCaptions';
 import roomStyles from '@/styles/Eburon.module.css';
 import {
@@ -442,6 +443,7 @@ function VideoConferenceComponent(props: {
   const [isAppMuted, setIsAppMuted] = React.useState(false);
 
   const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(false);
+  const [participantAliases, setParticipantAliases] = React.useState<Record<string, string>>({});
   const [roomState, setRoomState] = React.useState<RoomState>({ activeSpeaker: null, raiseHandQueue: [], lockVersion: 0 });
 
   React.useEffect(() => {
@@ -449,7 +451,15 @@ function VideoConferenceComponent(props: {
     const unsub = subscribeToRoom(roomName, (state) => {
       setRoomState(state);
     });
-    return unsub;
+    
+    const unsubAliases = subscribeToParticipantAliases(roomName, (aliases) => {
+      setParticipantAliases(aliases);
+    });
+
+    return () => {
+      unsub();
+      unsubAliases();
+    };
   }, [roomName]);
 
   // Auto-release speaker lock on unmount or page leave
@@ -756,6 +766,7 @@ function VideoConferenceComponent(props: {
             waitingList={waitingList}
             onAdmitParticipant={admitParticipant}
             admittedIds={admittedIds}
+            aliases={participantAliases}
           />
         );
       case 'agent':
@@ -769,17 +780,8 @@ function VideoConferenceComponent(props: {
         return <ChatPanel />;
       case 'settings':
         return (
-          <SettingsPanel
-            voiceFocusEnabled={voiceFocusEnabled}
-            onVoiceFocusChange={setVoiceFocusEnabled}
-            vadEnabled={vadEnabled}
-            onVadChange={setVadEnabled}
-            noiseSuppressionEnabled={noiseSuppressionEnabled}
-            onNoiseSuppressionChange={setNoiseSuppressionEnabled}
-            echoCancellationEnabled={echoCancellationEnabled}
-            onEchoCancellationChange={setEchoCancellationEnabled}
-            autoGainEnabled={autoGainEnabled}
-            onAutoGainChange={setAutoGainEnabled}
+          <AdminSettings 
+            onClose={() => setActiveSidebarPanel('participants')}
           />
         );
       default:

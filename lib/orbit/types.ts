@@ -1,5 +1,6 @@
 export type AppMode = 'idle' | 'listening' | 'speaking';
 export type Role = 'host' | 'attendee';
+export type TtsProvider = 'gemini' | 'deepgram' | 'cartesia';
 
 export interface Participant {
   user_id: string;
