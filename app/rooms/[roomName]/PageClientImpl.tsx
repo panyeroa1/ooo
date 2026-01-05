@@ -7,6 +7,7 @@ import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
 import { RecordingIndicator } from '@/lib/RecordingIndicator';
 import { ConnectionDetails } from '@/lib/types';
 import { EburonControlBar } from '@/lib/EburonControlBar';
+import { OrbitPluginFrame } from '@/lib/OrbitPluginFrame';
 
 import { ChatPanel } from '@/lib/ChatPanel';
 import { ParticipantsPanel } from '@/lib/ParticipantsPanel';
@@ -435,8 +436,16 @@ function VideoConferenceComponent(props: {
   const [isAppMuted, setIsAppMuted] = React.useState(false);
 
   const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(false);
+  const [isOrbitOpen, setIsOrbitOpen] = React.useState(false);
 
   const layoutContext = useCreateLayoutContext();
+
+  // Sync roomName to session storage for OrbitApp integration
+  React.useEffect(() => {
+    if (roomName) {
+      sessionStorage.setItem('eburon_meeting_id', roomName);
+    }
+  }, [roomName]);
 
   const playJoinSound = React.useCallback(() => {
     try {
@@ -661,6 +670,26 @@ function VideoConferenceComponent(props: {
     });
   }, []);
 
+  const isAgentSpeakingRef = React.useRef(false);
+
+  const updateVolumes = React.useCallback(() => {
+     const vol = isAgentSpeakingRef.current ? 0.15 : 1.0;
+     Array.from(room.remoteParticipants.values()).forEach(p => {
+        Array.from(p.trackPublications.values()).forEach(pub => {
+           if (pub.kind === Track.Kind.Audio && pub.track) {
+              pub.track.attachedElements.forEach(el => {
+                 el.volume = vol;
+              });
+           }
+        });
+     });
+  }, [room]);
+
+  const handleAgentSpeakingChange = React.useCallback((speaking: boolean) => {
+     isAgentSpeakingRef.current = speaking;
+     updateVolumes();
+  }, [updateVolumes]);
+
   const handleSidebarPanelToggle = (panel: SidebarPanel) => {
     setSidebarCollapsed((prevCollapsed) => {
       if (!prevCollapsed && activeSidebarPanel === panel) {
@@ -699,7 +728,7 @@ function VideoConferenceComponent(props: {
           />
         );
       case 'agent':
-        return <AgentPanel />;
+        return <AgentPanel meetingId={roomName} onSpeakingStateChange={handleAgentSpeakingChange} />;
       case 'chat':
         return <ChatPanel />;
       case 'settings':
@@ -752,6 +781,7 @@ function VideoConferenceComponent(props: {
           </div>
           
 
+          <OrbitPluginFrame isOpen={isOrbitOpen} />
           {isTranscriptionEnabled && (
             <LiveCaptions 
               room={room}
@@ -769,12 +799,14 @@ function VideoConferenceComponent(props: {
             onAgentToggle={() => handleSidebarPanelToggle('agent')}
             onChatToggle={() => handleSidebarPanelToggle('chat')}
             onSettingsToggle={() => handleSidebarPanelToggle('settings')}
+            onOrbitToggle={() => setIsOrbitOpen((prev) => !prev)}
 
             onTranscriptionToggle={() => setIsTranscriptionEnabled((prev) => !prev)}
             isParticipantsOpen={!sidebarCollapsed && activeSidebarPanel === 'participants'}
             isAgentOpen={!sidebarCollapsed && activeSidebarPanel === 'agent'}
             isChatOpen={!sidebarCollapsed && activeSidebarPanel === 'chat'}
             isSettingsOpen={!sidebarCollapsed && activeSidebarPanel === 'settings'}
+            isOrbitOpen={isOrbitOpen}
 
             isTranscriptionOpen={isTranscriptionEnabled}
             isAppMuted={isAppMuted}

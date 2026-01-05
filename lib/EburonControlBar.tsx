@@ -158,7 +158,15 @@ const MenuIcon = () => (
   </svg>
 );
 
-
+const OrbitIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M2.05 12h19.9" />
+    <path d="M12 2.05v19.9" />
+    <path d="M4.93 4.93l14.14 14.14" />
+    <path d="M19.07 4.93L4.93 19.07" />
+  </svg>
+);
 
 const CloseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -172,6 +180,7 @@ interface EburonControlBarProps {
   onParticipantsToggle?: () => void;
   onAgentToggle?: () => void;
   onSettingsToggle?: () => void;
+  onOrbitToggle?: () => void;
 
   onTranscriptionToggle?: () => void;
   audioCaptureOptions?: AudioCaptureOptions;
@@ -179,6 +188,7 @@ interface EburonControlBarProps {
   isParticipantsOpen?: boolean;
   isAgentOpen?: boolean;
   isSettingsOpen?: boolean;
+  isOrbitOpen?: boolean;
 
   isTranscriptionOpen?: boolean;
   isAppMuted?: boolean;
@@ -190,6 +200,7 @@ export function EburonControlBar({
   onParticipantsToggle,
   onAgentToggle,
   onSettingsToggle,
+  onOrbitToggle,
 
   onTranscriptionToggle,
   audioCaptureOptions,
@@ -197,6 +208,7 @@ export function EburonControlBar({
   isParticipantsOpen,
   isAgentOpen,
   isSettingsOpen,
+  isOrbitOpen,
 
   isTranscriptionOpen,
   isAppMuted = false,
@@ -515,6 +527,16 @@ export function EburonControlBar({
       <div className={`${styles.controlBar} ${isSidebarOpen ? styles.controlBarShifted : ''}`}>
         {/* Left Group: AV Controls */}
         <div className={styles.controlGroup}>
+          {onOrbitToggle && (
+            <button
+              className={`${styles.controlButton} ${isOrbitOpen ? styles.controlButtonActive : ''}`}
+              onClick={onOrbitToggle}
+              title="Orbit Plugin"
+              aria-pressed={isOrbitOpen}
+            >
+              <OrbitIcon />
+            </button>
+          )}
 
           <div className={styles.screenShareWrapper} ref={micMenuRef}>
             <button
@@ -742,6 +764,18 @@ export function EburonControlBar({
 
       {/* Mobile Navbar */}
       <nav className={styles.mobileNavbar}>
+        {onOrbitToggle && (
+          <button 
+            className={`${styles.mobileNavbarItem} ${isOrbitOpen ? styles.mobileNavbarItemActive : ''}`}
+            onClick={() => {
+              onOrbitToggle();
+              setIsMobileMenuOpen(false);
+            }}
+          >
+            <OrbitIcon />
+            <span>Orbit</span>
+          </button>
+        )}
 
         <button 
           className={`${styles.mobileNavbarItem} ${isMicEnabled ? styles.mobileNavbarItemActive : ''}`}

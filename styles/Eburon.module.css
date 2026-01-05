@@ -64,6 +64,29 @@
   --sc-controlbar-offset: 10px;
 }
 
+.orbitOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.orbitOverlayVisible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.orbitFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
 
 
 @media (max-width: 1200px) {
