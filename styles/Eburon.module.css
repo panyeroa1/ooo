@@ -512,7 +512,7 @@
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, transform 0.3s ease;
   overflow: visible;
   box-shadow: -18px 0 40px rgba(0, 0, 0, 0.6);
-  padding: 0.75rem 0.75rem 1rem;
+  padding: 0.75rem 0.75rem calc(var(--sc-controlbar-height, 80px) + 1rem);
 }
 
 .chatPanelCollapsed {

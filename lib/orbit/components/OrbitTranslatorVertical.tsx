@@ -329,14 +329,39 @@ export function OrbitTranslatorVertical({ roomCode, userId, onLiveTextChange }: 
       return () => { document.removeEventListener("mousedown", handleClickOutside); };
   }, [langMenuRef]);
 
+  // Helper format time
+  const formatTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   return (
-    <div className={styles.container}>
+    <div className="flex flex-col h-full bg-[#111315] text-white border-l border-white/5 font-sans">
       {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerTitle}>
-          <OrbitIcon size={20} /> Translator
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-[#1a1c1f]/50 backdrop-blur-md">
+        <div className="flex items-center gap-2.5">
+          <div className="relative">
+             <div className="absolute inset-0 bg-blue-500/20 blur-md rounded-full"></div>
+             <OrbitIcon size={22} />
+          </div>
+          <span className="font-semibold text-[15px] tracking-wide text-slate-100">AI Translator</span>
         </div>
-        <div className={`${styles.headerStatus} ${getStatusClass()}`}>● {getStatusText()}</div>
+        <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/20 border border-white/5 ${
+            !roomUuid ? 'text-amber-400' :
+            mode === 'speaking' ? 'text-rose-400' :
+            isLockedByOther ? 'text-orange-400' :
+            'text-emerald-400'
+        }`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${
+                !roomUuid ? 'bg-amber-400 animate-pulse' :
+                mode === 'speaking' ? 'bg-rose-400 animate-ping' :
+                isLockedByOther ? 'bg-orange-400' :
+                'bg-emerald-400'
+            }`} />
+            <span className="text-[11px] font-medium uppercase tracking-wider">
+                {!roomUuid ? 'Connecting' :
+                 mode === 'speaking' ? 'Live' :
+                 isLockedByOther ? 'Locked' :
+                 'Ready'}
+            </span>
+        </div>
       </div>
 
       {/* Global Subtitle Overlay */}
@@ -347,92 +372,161 @@ export function OrbitTranslatorVertical({ roomCode, userId, onLiveTextChange }: 
         />
       )}
 
-      {/* Controls Container */}
-      <div className="flex flex-col gap-2 p-3 w-full">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
           
-          {/* Speak Now Button */}
-          <button
-            onClick={mode === 'speaking' ? stopSpeaking : startSpeaking}
-            disabled={speakDisabled}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold transition-all ${
-                mode === 'speaking' 
-                ? 'bg-red-500/90 text-white animate-pulse shadow-lg shadow-red-500/20' 
-                : speakDisabled 
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/5'
-            }`}
-          >
-            {mode === 'speaking' ? <div className="w-2 h-2 bg-white rounded-full animate-ping mr-2"/> : null}
-            {mode === 'speaking' ? 'Stop Speaking' : 'Speak Now'}
-          </button>
+          {/* Controls Card */}
+          <div className="bg-[#1c1e21] rounded-2xl p-1 border border-white/5 shadow-xl shadow-black/20">
+              {/* Speak Button */}
+              <button
+                onClick={mode === 'speaking' ? stopSpeaking : startSpeaking}
+                disabled={speakDisabled}
+                className={`w-full group relative overflow-hidden rounded-xl p-4 transition-all duration-300 ${
+                    mode === 'speaking' 
+                    ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-lg shadow-rose-900/30' 
+                    : speakDisabled 
+                        ? 'bg-slate-800/50 cursor-not-allowed opacity-50'
+                        : 'bg-white/5 hover:bg-white/10 active:bg-white/5 border border-white/5'
+                }`}
+              >
+                <div className="relative z-10 flex items-center justify-center gap-3">
+                    {mode === 'speaking' ? (
+                        <>
+                            <div className="flex items-center gap-1 h-4">
+                                <div className="w-1 h-full bg-white rounded-full animate-[music-bar_0.8s_ease-in-out_infinite]" />
+                                <div className="w-1 h-3/4 bg-white rounded-full animate-[music-bar_1.1s_ease-in-out_infinite]" />
+                                <div className="w-1 h-2/3 bg-white rounded-full animate-[music-bar_0.9s_ease-in-out_infinite]" />
+                            </div>
+                            <span className="font-bold text-white text-[15px]">Stop Speaking</span>
+                        </>
+                    ) : (
+                        <>
+                            <div className={`p-1.5 rounded-full ${speakDisabled ? 'bg-slate-700' : 'bg-gradient-to-br from-blue-400 to-indigo-500'} group-hover:scale-110 transition-transform`}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                </svg>
+                            </div>
+                            <span className={`font-semibold text-[15px] ${speakDisabled ? 'text-slate-500' : 'text-slate-200'}`}>Speak Now</span>
+                        </>
+                    )}
+                </div>
+              </button>
 
-          {/* Listen Translation Group */}
-          <div className="flex items-stretch w-full rounded-xl border border-white/5 overflow-hidden">
-                <button
-                    onClick={() => setIsListening(!isListening)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 transition-colors ${
-                        isListening 
-                        ? 'bg-emerald-500/10 text-emerald-400' 
-                        : 'bg-transparent hover:bg-white/5 text-slate-300'
-                    }`}
-                >
-                    <span className="font-bold text-sm">Listen Translation</span>
-                    {isListening && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                </button>
-                <div className="w-[1px] bg-white/5" />
-                <button
-                    onClick={() => setIsLangOpen(!isLangOpen)}
-                    className="px-3 bg-transparent hover:bg-white/5 text-slate-300 flex items-center justify-center"
-                >
-                    <span className="text-lg mr-1">{selectedLanguage.flag}</span>
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor" className={`opacity-60 transition-transform ${isLangOpen ? 'rotate-180' : ''}`}>
-                        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                    </svg>
-                </button>
+              {/* Settings Group */}
+              <div className="mt-1 grid grid-cols-[1fr,1px,auto] gap-1 bg-black/20 rounded-xl border border-white/5 p-1">
+                    <button
+                        onClick={() => setIsListening(!isListening)}
+                        className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all ${
+                            isListening 
+                            ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30' 
+                            : 'bg-transparent hover:bg-white/5 text-slate-400 hover:text-slate-200'
+                        }`}
+                    >
+                        <span className="text-[13px] font-medium">Auto-Translate</span>
+                        <div className={`w-2 h-2 rounded-full border ${isListening ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-transparent border-slate-600'}`} />
+                    </button>
+                    
+                    <div className="bg-white/10 my-1 rounded-full" />
+
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsLangOpen(!isLangOpen)}
+                            className="h-full flex items-center gap-2 px-3 pl-3.5 rounded-lg hover:bg-white/5 min-w-[90px] justify-between group transition-colors"
+                        >
+                            <span className="text-lg leading-none filter drop-shadow-sm group-hover:scale-110 transition-transform">{selectedLanguage.flag}</span>
+                            <span className="text-[13px] font-medium text-slate-300">{selectedLanguage.code.toUpperCase()}</span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 transition-transform duration-200 ${isLangOpen ? '-rotate-180' : ''}`}>
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </button>
+
+                         {/* Dropdown Portal/Absolute */}
+                        {isLangOpen && (
+                            <div ref={langMenuRef} className="absolute right-0 top-full mt-2 w-48 z-50 bg-[#1f2125] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                <div className="max-h-[240px] overflow-y-auto py-1">
+                                    {LANGUAGES.map((lang) => (
+                                        <button
+                                            key={lang.code}
+                                            onClick={() => {
+                                                setSelectedLanguage(lang);
+                                                setIsLangOpen(false);
+                                                if (mode === 'speaking' && recognitionRef.current) {
+                                                    stopWebSpeech();
+                                                    setTimeout(startWebSpeech, 100);
+                                                }
+                                            }}
+                                            className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/5 transition-colors ${
+                                                selectedLanguage.code === lang.code ? 'bg-indigo-500/10' : ''
+                                            }`}
+                                        >
+                                            <span className="text-xl">{lang.flag}</span>
+                                            <div className="flex flex-col">
+                                                <span className={`text-[13px] font-medium ${selectedLanguage.code === lang.code ? 'text-indigo-400' : 'text-slate-300'}`}>{lang.name}</span>
+                                            </div>
+                                            {selectedLanguage.code === lang.code && <div className="ml-auto w-1.5 h-1.5 bg-indigo-400 rounded-full" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+              </div>
           </div>
 
-          {/* Language Dropdown */}
-          {isLangOpen && (
-             <div ref={langMenuRef} className="absolute z-50 left-2 right-2 mt-2 bg-[#1a1c1f] border border-white/10 rounded-xl shadow-2xl max-h-[300px] overflow-y-auto">
-                 {LANGUAGES.map((lang) => (
-                     <button
-                        key={lang.code}
-                        onClick={() => {
-                            setSelectedLanguage(lang);
-                            setIsLangOpen(false);
-                            // If speaking, restart to update language?
-                            if (mode === 'speaking' && recognitionRef.current) {
-                                stopWebSpeech();
-                                setTimeout(startWebSpeech, 100);
-                            }
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 border-b border-white/5 last:border-0 ${
-                            selectedLanguage.code === lang.code ? 'text-emerald-400 bg-emerald-500/5' : 'text-slate-300'
-                        }`}
-                     >
-                        <span className="text-xl">{lang.flag}</span>
-                        <span className="text-sm font-medium">{lang.name}</span>
-                        {selectedLanguage.code === lang.code && <div className="ml-auto w-1.5 h-1.5 bg-emerald-400 rounded-full" />}
-                     </button>
-                 ))}
+          {/* Activity Logs */}
+          <div className="flex-1 flex flex-col min-h-0">
+             <div className="flex items-center justify-between mb-2 px-1">
+                 <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Live Transcript</h3>
+                 <span className="text-[10px] text-slate-600">{formatTime()}</span>
              </div>
-          )}
+             
+             <div className="flex-1 bg-[#0f1012] rounded-xl border border-white/5 p-3 overflow-y-auto shadow-inner">
+                {transcript ? (
+                    <div className={`flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                        <div className="flex items-center gap-2">
+                             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                                {mode === 'speaking' ? 'ME' : 'AI'}
+                             </div>
+                             <span className="text-[11px] font-semibold text-slate-400">{mode === 'speaking' ? 'You' : 'Speaker'}</span>
+                        </div>
+                        <div className="ml-8 p-3 rounded-2xl rounded-tl-none bg-[#1a1c1f] border border-white/5 text-[14px] leading-relaxed text-slate-200 shadow-sm relative">
+                             {transcript}
+                             {isListening && (
+                                <div className="mt-2 pt-2 border-t border-white/5">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <div className="w-1 h-3 bg-emerald-500/50 rounded-full"></div>
+                                        <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Translated</span>
+                                    </div>
+                                    <p className="text-emerald-100/90 font-medium">{transcript}</p>
+                                </div>
+                             )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-2 opacity-60">
+                        <div className="p-3 bg-white/5 rounded-full">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </div>
+                        <p className="text-sm font-medium">No activity yet</p>
+                    </div>
+                )}
+             </div>
+          </div>
 
       </div>
-
-      {/* Activity Section */}
-      <div className={styles.activitySection}>
-        <div className={styles.activityLabel}>Activity</div>
-        <div className={styles.activityBox}>
-          {transcript && (
-            <div className={styles.transcriptOriginal}>
-              <span className={styles.transcriptLabel}>{mode === 'speaking' ? 'You' : 'Speaker'}:</span> {transcript}
-            </div>
-          )}
-          {!transcript && (
-            <div className={styles.noActivity}>No activity yet</div>
-          )}
-        </div>
+    
+      {/* Footer / Status Bar - optional */}
+      <div className="px-5 py-2 border-t border-white/5 bg-[#1a1c1f]/30 text-[10px] text-slate-600 flex justify-between items-center">
+          <span>Ollamma • Gemini • WebSpeech</span>
+          <div className="flex items-center gap-1.5">
+             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/20"></div>
+             <span>v2.1.0</span>
+          </div>
       </div>
     </div>
   );
