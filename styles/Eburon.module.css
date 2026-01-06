@@ -1836,7 +1836,7 @@
   padding: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  width: 60px;
+  flex: 1;
 }
 
 .mobileNavbarItemActive {
