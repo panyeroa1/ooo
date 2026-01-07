@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Settings, X, Mic, Video, Speaker, ShieldCheck } from 'lucide-react';
-import { CameraSettings } from '../../CameraSettings';
-import { MicrophoneSettings } from '../../MicrophoneSettings';
+import { CameraSettings } from '@/lib/CameraSettings';
+import { MicrophoneSettings } from '@/lib/MicrophoneSettings';
 import { MediaDeviceMenu, useMaybeRoomContext } from '@livekit/components-react';
 import roomStyles from '@/styles/Eburon.module.css';
 
@@ -33,6 +33,8 @@ export function AdminSettings({ onClose, hideHeader = false }: AdminSettingsProp
           {onClose && (
             <button
               onClick={onClose}
+              aria-label="Close settings"
+              title="Close settings"
               className="p-2 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white group"
             >
               <X className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
