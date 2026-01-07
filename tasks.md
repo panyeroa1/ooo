@@ -1,4 +1,39 @@
 
+
+Task ID: T-0036
+Title: Implement Deepgram Transcription Engine with Supabase Integration
+Status: DONE
+Owner: Miles
+
+START LOG
+
+Timestamp: 2026-01-07 18:12
+Plan:
+- Create `deepgramTranscriptionService.ts` for real-time WebSocket communication.
+- Implement immediate shipping of final transcripts to Supabase `transcriptions` table.
+- Create `DeepgramTranscription.tsx` UI component for audio capture and live display.
+- Add `/deepgram-engine` page for a clean, Vercel-ready entry point.
+- Ensure Eburon branding and styling consistency.
+Risks:
+- Audio permission issues in browser.
+- Rate limiting or connection instability with Deepgram WebSockets.
+
+END LOG
+
+Timestamp: 2026-01-07 18:16
+Changed:
+- Implemented `lib/orbit/services/deepgramTranscriptionService.ts`.
+- Implemented `lib/orbit/components/DeepgramTranscription.tsx`.
+- Implemented `app/deepgram-engine/page.tsx`.
+- Verified build and Supabase integration.
+- Committed and merged changes to `main`.
+How it was tested:
+- Manual verification of audio capture and transcription display.
+- Verified successful Next.js build (`npm run build`).
+- Confirmed database insertion logic.
+Test result: PASS
+Status: DONE
+
 Task ID: T-0034
 Title: Disable Translation and TTS (Maintenance)
 Status: DONE
