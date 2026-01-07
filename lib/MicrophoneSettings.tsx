@@ -26,29 +26,27 @@ export function MicrophoneSettings() {
     setNoiseFilterEnabled(!isLowPowerDevice());
   }, [setNoiseFilterEnabled]);
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        gap: '10px',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <section className="lk-button-group">
-        <TrackToggle source={Track.Source.Microphone}>Microphone</TrackToggle>
-        <div className="lk-button-group-menu">
-          <MediaDeviceMenu kind="audioinput" />
-        </div>
-      </section>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-xs font-semibold text-slate-300">Default Input</span>
+        <section className="lk-button-group">
+          <TrackToggle source={Track.Source.Microphone}>Microphone</TrackToggle>
+          <div className="lk-button-group-menu">
+            <MediaDeviceMenu kind="audioinput" />
+          </div>
+        </section>
+      </div>
 
       <button
-        className="lk-button"
+        className={`w-full py-2.5 px-4 rounded-xl border transition-all text-[10px] font-bold uppercase tracking-widest ${
+          isNoiseFilterEnabled 
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
+            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+        }`}
         onClick={() => setNoiseFilterEnabled(!isNoiseFilterEnabled)}
         disabled={isNoiseFilterPending}
-        aria-pressed={isNoiseFilterEnabled}
       >
-        {isNoiseFilterEnabled ? 'Disable' : 'Enable'} Enhanced Noise Cancellation
+        {isNoiseFilterPending ? 'Processing...' : (isNoiseFilterEnabled ? 'Disable Enhance' : 'Enable Enhance')}
       </button>
     </div>
   );

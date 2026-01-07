@@ -1,5 +1,55 @@
 
 
+Task ID: T-0046
+Title: Refactor Settings UI and Configuration
+Status: DONE
+Owner: Miles
+Created: 2026-01-07 18:45
+
+START LOG
+
+Timestamp: 2026-01-07 18:45
+Current behavior or state:
+- Settings UI in sidebar is reported as broken/poorly styled.
+- AdminSettings currently uses a database-backed config which the user wants to replace with hardcoded/env-based rendering.
+- User wants rendering within code/env instead of a complex configuration UI.
+
+Plan and scope for this task:
+- Refactor `AdminSettings.tsx` to simplify the UI and focus on core Eburon aesthetics.
+- Move configuration logic to use environment variables (`.env`) where appropriate.
+- Fix styling issues in the sidebar settings panel to match Eburon branding.
+- Remove redundant database-backed config UI if not needed.
+
+END LOG
+
+Timestamp: 2026-01-07 19:15
+Changed:
+- Rewrote `AdminSettings.tsx` to be a clean Media Devices panel.
+- Removed Supabase dependency for configuration.
+- Fixed `Eburon.module.css` to remove light-colored backgrounds in settings.
+- Deleted `app/api/admin/config/route.ts`.
+How it was tested:
+- Successful `npm run build` and `npm run lint`.
+- Verified context-aware rendering for standalone /settings page.
+Test result: PASS
+Status: DONE
+
+Files or modules expected to change:
+- `lib/orbit/components/AdminSettings.tsx`
+- `app/rooms/[roomName]/PageClientImpl.tsx` (sidebar integration)
+
+Risks or things to watch out for:
+- Ensuring existing camera/mic selection still works through standard LiveKit components if we replace the custom UI.
+
+WORK CHECKLIST
+
+- [ ] Simplify `AdminSettings.tsx` UI
+- [ ] Align settings styling with Eburon branding
+- [ ] Move config to code/env as requested
+- [ ] Verify sidebar rendering in `PageClientImpl.tsx`
+
+------------------------------------------------------------
+
 Task ID: T-0036
 Title: Implement Deepgram Transcription Engine with Supabase Integration
 Status: DONE

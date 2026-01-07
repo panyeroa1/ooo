@@ -1587,67 +1587,91 @@
 .settingsContainer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 1.5rem;
 }
 
 .videoPreview {
-  max-height: 280px;
-  object-fit: contain;
-  object-position: right;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
   transform: scaleX(-1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .effectsSection {
-  margin-top: 10px;
+  margin-top: 0.5rem;
 }
 
 .effectsTitle {
-  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 0.75rem;
 }
 
 .effectsList {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
 }
 
 .effectButton {
-  min-width: 80px;
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.effectButtonActive {
+  border-color: #8D1658;
+  background: rgba(141, 22, 88, 0.15);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(141, 22, 88, 0.2);
 }
 
 .blurButton {
-  min-width: 80px;
-  background-color: #f0f0f0;
   position: relative;
   overflow: hidden;
-  height: 60px;
+  height: 48px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .blurOverlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #e0e0e0;
-  filter: blur(8px);
-  z-index: 0;
+  inset: 0;
+  background-image: url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=200&auto=format&fit=crop');
+  background-size: cover;
+  filter: blur(4px);
+  opacity: 0.4;
 }
 
 .effectLabel {
   position: relative;
   z-index: 1;
-  background-color: rgba(0, 0, 0, 0.6);
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .imageButton {
   background-size: cover;
   background-position: center;
-  width: 80px;
-  height: 60px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  filter: saturate(0.8);
 }
 
 .imageButtonDesk {
