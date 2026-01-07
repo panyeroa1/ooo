@@ -154,6 +154,14 @@ export function EburonOrb({
     };
   }, [isTranscriptionActive, isTranslationActive, meetingId, userId, targetLanguage]);
 
+  // Sync position to CSS variables via ref to avoid React inline-style lint
+  useEffect(() => {
+    if (orbRef.current) {
+      orbRef.current.style.setProperty('--orb-right', `${pos.x}px`);
+      orbRef.current.style.setProperty('--orb-bottom', `${pos.y}px`);
+    }
+  }, [pos]);
+
   // Dragging logic
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest(`.${styles.gearBtn}`)) return;
@@ -178,10 +186,6 @@ export function EburonOrb({
       <div 
         ref={orbRef}
         className={styles.orbitSystem}
-        style={{ 
-          '--orb-right': `${pos.x}px`,
-          '--orb-bottom': `${pos.y}px`,
-        } as React.CSSProperties}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -200,17 +204,16 @@ export function EburonOrb({
         </div>
       </div>
 
-      {/* Simplified Subtitle Display managed by Orb */}
-      <div className="fixed bottom-[60px] left-1/2 -translate-x-1/2 w-[95%] max-w-[800px] z-[2500] flex justify-center pointer-events-none">
+      {/* Subtitle Display */}
+      <div className={styles.subtitleContainer}>
         <div className={`
-          bg-black/85 backdrop-blur-[20px] px-[30px] py-[16px] rounded-[30px] border border-white/15 text-center
-          transition-all duration-300 shadow-2xl
-          ${isTranscriptionActive ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-5 scale-95'}
+          ${styles.subtitleContent}
+          ${isTranscriptionActive ? styles.subtitleActive : styles.subtitleInactive}
         `}>
-          <span className="text-[9px] font-extrabold text-[#D4AF37] block mb-[6px] tracking-[1.5px] uppercase">
+          <span className={styles.subtitleMeta}>
             {isTranslationActive ? 'Gemini Translator' : 'Orbit Model Active'}
           </span>
-          <span className="text-xl font-medium text-white shadow-sm">
+          <span className={styles.subtitleText}>
             {transcriptionText}
           </span>
         </div>

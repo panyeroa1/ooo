@@ -2265,8 +2265,93 @@
   object-fit: contain;
 }
 
-.orbitIconMobile {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+/* Subtitles Output */
+.subtitleContainer {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 95%;
+  max-width: 800px;
+  z-index: 2500;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.subtitleContent {
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(20px);
+  padding: 1rem 1.75rem;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.subtitleActive {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.subtitleInactive {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.subtitleMeta {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--eb-gold);
+  margin-bottom: 4px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.subtitleText {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+/* Mobile Media Queries */
+@media (max-width: 768px) {
+  .orbitSystem {
+    width: 100px;
+    height: 100px;
+    right: 15px;
+    bottom: 90px;
+    --orb-right: 15px;
+    --orb-bottom: 90px;
+  }
+  
+  .ebPlanet {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .gearBtn {
+    width: 28px;
+    height: 28px;
+    top: -10px;
+  }
+  
+  .planetCanvas {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .subtitleContainer {
+    bottom: 70px;
+  }
+  
+  .subtitleText {
+    font-size: 1rem;
+  }
+  
+  .subtitleContent {
+    padding: 0.75rem 1.25rem;
+  }
 }
