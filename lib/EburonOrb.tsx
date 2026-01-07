@@ -179,11 +179,9 @@ export function EburonOrb({
         ref={orbRef}
         className={styles.orbitSystem}
         style={{ 
-          left: isDragging ? undefined : undefined, 
-          right: pos.x, 
-          bottom: pos.y,
-          position: 'fixed'
-        }}
+          '--orb-right': `${pos.x}px`,
+          '--orb-bottom': `${pos.y}px`,
+        } as React.CSSProperties}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -193,7 +191,7 @@ export function EburonOrb({
           <SettingsIcon className="w-4 h-4 text-white" />
         </div>
         <div className={`${styles.ebPlanet} ${isTranscriptionActive || isTranslationActive ? styles.ebPlanetActive : ''} ${isTranslationActive ? styles.ebPlanetTranslate : ''}`}>
-          <canvas ref={canvasRef} width={72} height={72} style={{ position: 'absolute', inset: 0 }} />
+          <canvas ref={canvasRef} width={72} height={72} className={styles.planetCanvas} />
           {isTranslationActive ? (
              <Volume2 className="w-7 h-7 text-white z-10" />
           ) : (

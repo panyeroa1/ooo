@@ -235,8 +235,8 @@
   position: fixed;
   width: 140px;
   height: 140px;
-  right: 20px;
-  bottom: 100px;
+  right: var(--orb-right, 20px);
+  bottom: var(--orb-bottom, 100px);
   z-index: 2000;
   display: flex;
   justify-content: center;
@@ -289,6 +289,11 @@
   cursor: pointer;
   overflow: hidden;
   transition: 0.3s;
+}
+
+.planetCanvas {
+  position: absolute;
+  inset: 0;
 }
 
 .ebPlanetActive {
