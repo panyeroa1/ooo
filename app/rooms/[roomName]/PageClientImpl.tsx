@@ -17,6 +17,7 @@ import { RoomState } from '@/lib/orbit/types';
 import { ChatPanel } from '@/lib/ChatPanel';
 import { ParticipantsPanel } from '@/lib/ParticipantsPanel';
 import { AdminSettings } from '@/lib/orbit/components/AdminSettings';
+import { EburonOrb } from '@/lib/EburonOrb';
 import roomStyles from '@/styles/Eburon.module.css';
 import {
   LocalUserChoices,
@@ -440,6 +441,8 @@ function VideoConferenceComponent(props: {
   const [admittedIds, setAdmittedIds] = React.useState<Set<string>>(new Set());
   const { user } = useAuth();
   const [isAppMuted, setIsAppMuted] = React.useState(false);
+  const [isTranscriptionActive, setIsTranscriptionActive] = React.useState(false);
+  const [isTranslationActive, setIsTranslationActive] = React.useState(false);
 
   const [participantAliases, setParticipantAliases] = React.useState<Record<string, string>>({});
   const [roomState, setRoomState] = React.useState<RoomState>({ activeSpeaker: null, raiseHandQueue: [], lockVersion: 0 });
@@ -813,10 +816,22 @@ function VideoConferenceComponent(props: {
             roomState={roomState}
             userId={user?.id}
             audioCaptureOptions={audioCaptureOptions}
+            onTranscriptionToggle={() => setIsTranscriptionActive(!isTranscriptionActive)}
+            isTranscriptionActive={isTranscriptionActive}
+            onTranslationToggle={() => setIsTranslationActive(!isTranslationActive)}
+            isTranslationActive={isTranslationActive}
           />
           
           <DebugMode />
           <RecordingIndicator />
+
+          <EburonOrb 
+            isTranscriptionActive={isTranscriptionActive}
+            isTranslationActive={isTranslationActive}
+            onToggleTranscription={() => setIsTranscriptionActive(!isTranscriptionActive)}
+            onToggleTranslation={() => setIsTranslationActive(!isTranslationActive)}
+            onOpenSettings={() => setActiveSidebarPanel('settings')}
+          />
         </LayoutContextProvider>
       </RoomContext.Provider>
     </div>
