@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { decodePassphrase } from '../../../lib/client-utils';
-import { DebugMode } from '../../../lib/Debug';
-import { KeyboardShortcuts } from '../../../lib/KeyboardShortcuts';
+import { decodePassphrase } from '@/lib/client-utils';
+import { DebugMode } from '@/lib/Debug';
+import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/orbit/services/supabaseClient';
 import { useAuth } from '@/components/AuthProvider';
@@ -17,7 +17,6 @@ import { RoomState } from '@/lib/orbit/types';
 import { ChatPanel } from '@/lib/ChatPanel';
 import { ParticipantsPanel } from '@/lib/ParticipantsPanel';
 import { AdminSettings } from '@/lib/orbit/components/AdminSettings';
-import { LiveCaptions } from '@/lib/LiveCaptions';
 import roomStyles from '@/styles/Eburon.module.css';
 import {
   LocalUserChoices,
@@ -53,8 +52,8 @@ import {
   Track,
 } from 'livekit-client';
 import { useRouter, useParams } from 'next/navigation';
-import { useSetupE2EE } from '../../../lib/useSetupE2EE';
-import { useLowCPUOptimizer } from '../../../lib/usePerfomanceOptimiser';
+import { useSetupE2EE } from '@/lib/useSetupE2EE';
+import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
 
 const CONN_DETAILS_ENDPOINT =
   process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details';
@@ -442,7 +441,6 @@ function VideoConferenceComponent(props: {
   const { user } = useAuth();
   const [isAppMuted, setIsAppMuted] = React.useState(false);
 
-  const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(false);
   const [participantAliases, setParticipantAliases] = React.useState<Record<string, string>>({});
   const [roomState, setRoomState] = React.useState<RoomState>({ activeSpeaker: null, raiseHandQueue: [], lockVersion: 0 });
 
@@ -753,22 +751,6 @@ function VideoConferenceComponent(props: {
     }
   };
 
-  const handleTranscriptSegment = React.useCallback(async (segment: any) => {
-    if (!roomName) return;
-    
-    try {
-        const { error } = await supabase.from('transcriptions').insert({
-            meeting_id: roomName,
-            speaker_id: user?.id || crypto.randomUUID(), // Must be UUID
-            transcribe_text_segment: segment.text,
-            full_transcription: segment.text,
-            users_all: [] // Placeholder for listening users
-        });
-        if (error) throw error;
-    } catch (err) {
-        console.error('Failed to save transcript', err);
-    }
-  }, [roomName, user?.id]);
 
 
 
