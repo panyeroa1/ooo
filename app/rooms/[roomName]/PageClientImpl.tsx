@@ -896,7 +896,13 @@ function VideoConferenceComponent(props: {
         console.log('📝 Attempting insert with data:', JSON.stringify(insertData, null, 2));
         console.log('🔌 Supabase client exists:', !!supabase);
         
-        const result = await supabase.from('transcriptions').insert(insertData);
+        const result = await supabase.from('transcriptions').insert({
+            meeting_id: roomName,
+            speaker_id: speakerId,
+            user_id: null, // Set to null to avoid FK constraint - user may not exist in users table
+            transcribe_text_segment: segment.text,
+            full_transcription: segment.text,
+        });
         console.log('📊 Supabase result:', JSON.stringify(result, null, 2));
         
         const { data, error } = result;
