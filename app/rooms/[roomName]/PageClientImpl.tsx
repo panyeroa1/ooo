@@ -45,6 +45,8 @@ import {
   RoomAudioRenderer,
   ConnectionStateToast,
 } from '@livekit/components-react';
+import { useMeetingFloor } from '@/lib/useMeetingFloor';
+import { useRoomContext, useLocalParticipant, useRemoteParticipants } from '@livekit/components-react';
 import {
   ExternalE2EEKeyProvider,
   RoomOptions,
@@ -502,7 +504,9 @@ function VideoConferenceComponent(props: {
   const { user } = useAuth();
   const [isAppMuted, setIsAppMuted] = React.useState(false);
 
-  const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(false);
+  const { activeSpeakerId: floorSpeakerId, isFloorHolder, claimFloor, grantFloor } = useMeetingFloor(roomName, user?.id || '');
+
+  const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(true);
   const [roomState, setRoomState] = React.useState<RoomState>({ activeSpeaker: null, raiseHandQueue: [], lockVersion: 0 });
   const [audioDevices, setAudioDevices] = React.useState<MediaDeviceInfo[]>([]);
 
