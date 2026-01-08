@@ -1,0 +1,26 @@
+.captionsContainer {
+  position: fixed;
+  bottom: 120px; /* Above the control bar */
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1000;
+  padding: 0 40px;
+}
+
+.captionsText {
+  color: #00FF00; /* Lime green */
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+  opacity: 0.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  background: transparent;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
