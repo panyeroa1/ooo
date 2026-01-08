@@ -79,7 +79,14 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   }, []);
 
   const [username, setUsername] = useState(defaults?.username || '');
-  const [videoEnabled, setVideoEnabled] = useState(defaults?.videoEnabled ?? true);
+  const [videoEnabled, setVideoEnabled] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Set initial values after mount to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+    setVideoEnabled(defaults?.videoEnabled ?? true);
+  }, [defaults?.videoEnabled]);
   const [audioEnabled, setAudioEnabled] = useState(defaults?.audioEnabled ?? true);
 
   const [audioInputDevices, setAudioInputDevices] = useState<DeviceInfo[]>([]);
