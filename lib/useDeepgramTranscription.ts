@@ -24,6 +24,7 @@ interface UseDeepgramTranscriptionReturn {
   isConnecting: boolean;
   transcript: string;
   interimTranscript: string;
+  audioLevel: number;
   error: string | null;
   startListening: (deviceId?: string) => Promise<void>;
   stopListening: () => void;
@@ -45,11 +46,15 @@ export function useDeepgramTranscription(
   const [isConnecting, setIsConnecting] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const connectionRef = useRef<LiveClient | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyzerRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Fetch Deepgram token from server
   const fetchDeepgramToken = useCallback(async (): Promise<string | null> => {
@@ -127,6 +132,26 @@ export function useDeepgramTranscription(
         };
 
         mediaRecorder.start(250); // Send audio every 250ms
+
+        // Set up audio level analyzer
+        const audioContext = new AudioContext();
+        audioContextRef.current = audioContext;
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyzer = audioContext.createAnalyser();
+        analyzer.fftSize = 256;
+        analyzer.smoothingTimeConstant = 0.8;
+        source.connect(analyzer);
+        analyzerRef.current = analyzer;
+
+        const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+        const updateLevel = () => {
+          if (!analyzerRef.current) return;
+          analyzerRef.current.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          setAudioLevel(avg / 255);
+          animationFrameRef.current = requestAnimationFrame(updateLevel);
+        };
+        updateLevel();
       });
 
       connection.on(LiveTranscriptionEvents.Transcript, (data) => {
@@ -185,6 +210,20 @@ export function useDeepgramTranscription(
   }, [isListening, isConnecting, fetchDeepgramToken, model, language, onTranscript, onSpeechStart, onSpeechEnd, onError]);
 
   const stopListening = useCallback(() => {
+    // Stop animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    analyzerRef.current = null;
+    setAudioLevel(0);
+
     // Stop MediaRecorder
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
@@ -219,6 +258,7 @@ export function useDeepgramTranscription(
     isConnecting,
     transcript,
     interimTranscript,
+    audioLevel,
     error,
     startListening,
     stopListening,

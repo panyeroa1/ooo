@@ -100,6 +100,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
     isConnecting,
     transcript,
     interimTranscript,
+    audioLevel,
     error: transcriptionError,
     startListening,
     stopListening,
@@ -525,7 +526,17 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
               }}
               disabled={micPermission !== 'granted' || isConnecting}
             >
-              {isConnecting ? 'Connecting...' : isListening ? '⏹️ Stop Test' : '▶️ Start Test'}
+              <span className={styles.testMicText}>
+                {isConnecting ? 'Connecting...' : isListening ? '⏹️ Stop Test' : '▶️ Start Test'}
+              </span>
+              {isListening && (
+                <span className={styles.audioVisualizer}>
+                  <span className={styles.visualizerBar} style={{ height: `${20 + audioLevel * 80}%` }} />
+                  <span className={styles.visualizerBar} style={{ height: `${30 + audioLevel * 70}%` }} />
+                  <span className={styles.visualizerBar} style={{ height: `${15 + audioLevel * 85}%` }} />
+                  <span className={styles.visualizerBar} style={{ height: `${25 + audioLevel * 75}%` }} />
+                </span>
+              )}
             </button>
           </div>
 
