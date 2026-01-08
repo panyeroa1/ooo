@@ -20,7 +20,20 @@ import { OrbitTranslatorVertical } from '@/lib/orbit/components/OrbitTranslatorV
 import { OrbitIntegrations } from '@/lib/orbit/components/OrbitIntegrations';
 import { LiveCaptions } from '@/lib/LiveCaptions';
 import { CustomPreJoin } from '@/lib/CustomPreJoin';
+import { useDeepgramTranscription } from '@/lib/useDeepgramTranscription';
+import { useGeminiLive } from '@/lib/useGeminiLive';
 import roomStyles from '@/styles/Eburon.module.css';
+import sidebarStyles from '@/styles/PreJoin.module.css';
+
+function CaptionIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+      <line x1="8" y1="12" x2="16" y2="12"></line>
+      <line x1="8" y1="16" x2="16" y2="16"></line>
+    </svg>
+  );
+}
 import {
   LocalUserChoices,
   RoomContext,
@@ -499,6 +512,84 @@ function VideoConferenceComponent(props: {
   const [roomState, setRoomState] = React.useState<RoomState>({ activeSpeaker: null, raiseHandQueue: [], lockVersion: 0 });
   const [audioDevices, setAudioDevices] = React.useState<MediaDeviceInfo[]>([]);
 
+  // Transcription State (Client-Side)
+  // This lives alongside the "LiveCaptions" component which handles room-wide broadcasted captions.
+  // This specific sidebar is for the "Streaming/Local" transcription (Deepgram/Gemini) requested by user.
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [tabStream, setTabStream] = React.useState<MediaStream | null>(null);
+  const [isRadioStreaming, setIsRadioStreaming] = React.useState(false);
+
+  // Deepgram Hook
+  const {
+    isListening: isDeepgramListening,
+    transcript: deepgramTranscript,
+    interimTranscript: deepgramInterimTranscript,
+    error: deepgramError,
+    startListening: startDeepgram,
+    startStreamListening: startDeepgramStream,
+    stopListening: stopDeepgram,
+  } = useDeepgramTranscription({
+    language: 'multi',
+    model: 'nova-2',
+  });
+
+  // Gemini Hook
+  const {
+    isRecording: isGeminiListening,
+    transcription: geminiTranscript,
+    toggleRecording: toggleGemini,
+  } = useGeminiLive();
+
+  const activeTranscript = deepgramTranscript || geminiTranscript;
+  const activeInterim = deepgramInterimTranscript;
+  const isListening = isDeepgramListening || isGeminiListening;
+
+  const captureTabAudio = React.useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      const audioTrack = stream.getAudioTracks()[0];
+      if (!audioTrack) {
+        stream.getTracks().forEach(t => t.stop());
+        return null;
+      }
+      stream.getVideoTracks()[0].onended = () => setTabStream(null);
+      setTabStream(stream);
+      return stream;
+    } catch (err) {
+      console.error("Error capturing tab audio:", err);
+      return null;
+    }
+  }, []);
+
+  const handleToggleRadioStream = React.useCallback(async () => {
+     if (isListening) {
+         if (isDeepgramListening) stopDeepgram();
+         setIsRadioStreaming(false);
+     } else {
+         try {
+             setIsRadioStreaming(true);
+             await startDeepgramStream('https://playerservices.streamtheworld.com/api/livestream-redirect/CSPANRADIOAAC.aac');
+         } catch (e) {
+             setIsRadioStreaming(false);
+         }
+     }
+  }, [isListening, isDeepgramListening, stopDeepgram, startDeepgramStream]);
+
+  const handleToggleListening = React.useCallback(async () => {
+    if (isListening) {
+      if (isDeepgramListening) stopDeepgram();
+      if (isGeminiListening) toggleGemini();
+      if (isRadioStreaming) setIsRadioStreaming(false);
+    } else {
+      let currentStream = tabStream;
+      try {
+        await startDeepgram(undefined, currentStream || undefined);
+      } catch (err) {
+         toggleGemini(currentStream || undefined);
+      }
+    }
+  }, [isListening, isDeepgramListening, stopDeepgram, isGeminiListening, toggleGemini, startDeepgram, tabStream, isRadioStreaming]);
+
   React.useEffect(() => {
     const updateDevices = async () => {
       try {
@@ -971,6 +1062,76 @@ function VideoConferenceComponent(props: {
           
           <DebugMode />
           <RecordingIndicator />
+
+          {/* Transcription Sidebar Overlay */}
+          {isSidebarOpen && (
+            <div className={sidebarStyles.transcriptionSidebar} style={{zIndex: 50, right: 80, top: 20, height: 'calc(100% - 100px)', position: 'absolute'}}>
+              <div className={sidebarStyles.sidebarHeader}>
+                <h3>Live Transcription</h3>
+                <button className={sidebarStyles.closeSidebarBtn} onClick={() => setIsSidebarOpen(false)}>×</button>
+              </div>
+              
+              <div className={sidebarStyles.transcriptionContent}>
+                {activeTranscript ? (
+                   <p className={sidebarStyles.finalText}>{activeTranscript}</p>
+                ) : (
+                   <p className={sidebarStyles.placeholderText}>
+                     {isListening ? "Listening..." : "Start transcription to see text here."}
+                   </p>
+                )}
+                {activeInterim && <p className={sidebarStyles.interimText}>{activeInterim}</p>}
+              </div>
+
+               <div className={sidebarStyles.captionSection}>
+                 <button
+                    type="button"
+                    className={`${sidebarStyles.captionToggleBtn} ${isListening ? sidebarStyles.captionToggleActive : ''}`}
+                    onClick={handleToggleListening}
+                 >
+                   <span>{isListening ? 'Stop Mic/Tab' : 'Start Mic/Tab'}</span>
+                 </button>
+                 
+                 <button
+                    type="button"
+                    className={`${sidebarStyles.captionToggleBtn} ${tabStream ? sidebarStyles.captionToggleActive : ''}`}
+                    onClick={async () => {
+                      if (tabStream) {
+                        tabStream.getTracks().forEach(t => t.stop());
+                        setTabStream(null);
+                      } else {
+                        await captureTabAudio();
+                      }
+                    }}
+                 >
+                   <span>{tabStream ? 'Stop Tab Audio' : 'Share Tab Audio'}</span>
+                 </button>
+
+                 <button
+                    type="button"
+                    className={`${sidebarStyles.captionToggleBtn} ${isRadioStreaming ? sidebarStyles.captionToggleActive : ''}`}
+                    onClick={handleToggleRadioStream}
+                 >
+                   <span>{isRadioStreaming ? 'Stop Radio' : 'Test Radio'}</span>
+                 </button>
+                 
+                 {isGeminiListening && <span className={sidebarStyles.geminiBadge}>Gemini Active</span>}
+                 {tabStream && <span className={sidebarStyles.geminiBadge} style={{background: '#10b981'}}>Tab Audio</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Floating Caption Button if Sidebar is Closed OR in Control Bar - Putting it floating for now as requested "add caption icon" */}
+           <div style={{position: 'absolute', bottom: 100, left: 20, zIndex: 60}}>
+             <button
+                type="button"
+                className={`${sidebarStyles.captionToggleBtn} ${isSidebarOpen ? sidebarStyles.captionToggleActive : ''}`}
+                style={{width: 'auto', padding: '10px'}}
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                title="Toggle Transcription Sidebar"
+             >
+               <CaptionIcon />
+             </button>
+           </div>
         </LayoutContextProvider>
       </RoomContext.Provider>
     </div>
