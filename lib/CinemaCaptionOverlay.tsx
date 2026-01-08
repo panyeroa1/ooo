@@ -41,12 +41,12 @@ const overlayStyles = {
   },
   captionBar: {
     position: 'fixed' as 'fixed',
-    bottom: 0,
+    bottom: 80, // Position above the control bar
     left: 0,
     width: '100%',
-    height: '80px',
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    borderTop: '1px solid #333',
+    height: '50px',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -54,7 +54,7 @@ const overlayStyles = {
     zIndex: 999,
   },
   transcriptText: {
-    fontSize: '24px',
+    fontSize: '14px',
     color: '#ffffff',
     fontWeight: 500,
     textAlign: 'center' as 'center',
@@ -62,7 +62,7 @@ const overlayStyles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     width: '100%',
-    textShadow: '0px 2px 4px rgba(0,0,0,0.8)',
+    textShadow: '0px 1px 2px rgba(0,0,0,0.8)',
   },
   interim: {
     color: '#aaa',
