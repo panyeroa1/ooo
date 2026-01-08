@@ -42,6 +42,7 @@ export function CinemaCaptionOverlay({ onTranscriptSegment, defaultDeviceId }: C
     const [isFading, setIsFading] = useState(false);
     const captionRef = useRef<HTMLDivElement>(null);
     const { localParticipant } = useLocalParticipant();
+    const lastMicStateRef = useRef<boolean | null>(null);
     
     const {
         isRecording,
@@ -57,10 +58,15 @@ export function CinemaCaptionOverlay({ onTranscriptSegment, defaultDeviceId }: C
         const micPub = localParticipant.getTrackPublication(Track.Source.Microphone);
         const isMicEnabled = !micPub?.isMuted && micPub?.track !== undefined;
 
-        if (isMicEnabled && !isRecording) {
-            toggleRecording();
-        } else if (!isMicEnabled && isRecording) {
-            toggleRecording();
+        // Only toggle if mic state actually changed
+        if (lastMicStateRef.current !== isMicEnabled) {
+            lastMicStateRef.current = isMicEnabled;
+            
+            if (isMicEnabled && !isRecording) {
+                toggleRecording();
+            } else if (!isMicEnabled && isRecording) {
+                toggleRecording();
+            }
         }
     }, [localParticipant, isRecording, toggleRecording]);
 
