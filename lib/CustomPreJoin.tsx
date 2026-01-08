@@ -3,11 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/orbit/services/supabaseClient';
-import { useDeepgramTranscription } from '@/lib/useDeepgramTranscription';
-import { useGeminiLive } from '@/lib/useGeminiLive';
-import { useWebSpeech } from '@/lib/useWebSpeech';
-import { useAssemblyAI } from '@/lib/useAssemblyAI';
-import { TranscriptionSidebar, TranscriptionProvider } from '@/lib/TranscriptionSidebar';
 import styles from '@/styles/PreJoin.module.css';
 
 interface DeviceInfo {
@@ -72,13 +67,7 @@ const VideoOffIcon = () => (
   </svg>
 );
 
-const CaptionIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    <path d="M9 10a1 2 0 1 1-2 0c0-1.1.9-2 2-2h4a2 0 0 1 2 2v1a2 0 0 1-2 2 2 0 0 0-2 2v1"></path>
-    <line x1="12" x2="12" y1="17" y2="17.01"></line>
-  </svg>
-);
+
 
 export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomPreJoinProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -111,194 +100,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   // Room data from database
   const [roomData, setRoomData] = useState<{ id: string; room_code: string; name: string | null } | null>(null);
 
-  // Sidebar state
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Deepgram transcription
-  const {
-    isListening: isDeepgramListening,
-    isConnecting: isDeepgramConnecting,
-    transcript: deepgramTranscript,
-    interimTranscript: deepgramInterimTranscript,
-    audioLevel,
-    error: deepgramError,
-    startListening: startDeepgram,
-    startStreamListening: startDeepgramStream,
-    stopListening: stopDeepgram,
-  } = useDeepgramTranscription({
-    language: 'multi',
-    model: 'nova-2',
-  });
-
-  // Gemini Live transcription (Fallback/Alternative)
-  const {
-    isRecording: isGeminiListening,
-    transcription: geminiTranscript,
-    status: geminiStatus,
-    toggleRecording: toggleGemini,
-  } = useGeminiLive();
-
-  // Unified Transcription State
-  const [provider, setProvider] = useState<TranscriptionProvider>('deepgram');
-  
-  // Web Speech Hook
-  const {
-      isListening: isWebSpeechListening,
-      transcript: webSpeechTranscript,
-      interimTranscript: webSpeechInterim,
-      startListening: startWebSpeech,
-      stopListening: stopWebSpeech,
-      error: webSpeechError
-  } = useWebSpeech();
-
-  // AssemblyAI Hook
-  const {
-      isListening: isAssemblyListening,
-      transcript: assemblyTranscript,
-      interimTranscript: assemblyInterim,
-      startListening: startAssembly,
-      stopListening: stopAssembly,
-      error: assemblyError
-  } = useAssemblyAI();
-
-  // Active Transcript Resolution
-  let activeTranscript = '';
-  let activeInterim = '';
-  let activeError: string | null = null;
-  let isListening = false;
-
-  switch (provider) {
-      case 'deepgram':
-          activeTranscript = deepgramTranscript;
-          activeInterim = deepgramInterimTranscript;
-          activeError = deepgramError;
-          isListening = isDeepgramListening;
-          break;
-      case 'gemini':
-          activeTranscript = geminiTranscript;
-          isListening = isGeminiListening;
-          break;
-      case 'webspeech':
-          activeTranscript = webSpeechTranscript;
-          activeInterim = webSpeechInterim;
-          activeError = webSpeechError;
-          isListening = isWebSpeechListening;
-          break;
-      case 'assemblyai':
-          activeTranscript = assemblyTranscript;
-          activeInterim = assemblyInterim;
-          activeError = assemblyError;
-          isListening = isAssemblyListening;
-          break;
-  }
-  
-  // Tab/Radio State
-  const [tabStream, setTabStream] = useState<MediaStream | null>(null);
-  const [isRadioStreaming, setIsRadioStreaming] = useState(false);
-
-  const captureTabAudio = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: true, // Required to get the "share tab audio" checkbox in some browsers
-        audio: { 
-          echoCancellation: true, 
-          noiseSuppression: true,
-          autoGainControl: true 
-        } 
-      });
-
-      // We only need the audio track
-      const audioTrack = stream.getAudioTracks()[0];
-      if (!audioTrack) {
-        console.warn("No audio track found in screen share");
-        // Stop the video track if we only wanted audio, but user might want to see it? 
-        // For now, let's stop the whole stream if no audio
-        stream.getTracks().forEach(t => t.stop());
-        return null;
-      }
-      
-      // Handle stream end (user clicked "Stop Sharing" in browser UI)
-      stream.getVideoTracks()[0].onended = () => {
-        setTabStream(null);
-        // Also stop transcription if it was running with this stream?
-        // Ideally yes, but for now we let manual stop.
-      };
-
-      setTabStream(stream);
-      return stream;
-    } catch (err) {
-      console.error("Error capturing tab audio:", err);
-      return null;
-    }
-  }, []);
-
-  const handleToggleListening = useCallback(async () => {
-    // Stop all
-    if (isDeepgramListening) stopDeepgram();
-    if (isGeminiListening) toggleGemini();
-    if (isWebSpeechListening) stopWebSpeech();
-    if (isAssemblyListening) stopAssembly();
-    if (isRadioStreaming) setIsRadioStreaming(false);
-
-    if (!isListening) {
-        // Start selected
-        let currentStream = tabStream;
-        try {
-            switch (provider) {
-                case 'deepgram':
-                    await startDeepgram(selectedAudioInput || undefined, currentStream || undefined);
-                    break;
-                case 'gemini':
-                    toggleGemini(currentStream || undefined);
-                    break;
-                case 'webspeech':
-                    startWebSpeech();
-                    break;
-                case 'assemblyai':
-                    await startAssembly();
-                    break;
-            }
-        } catch (err) {
-            console.error("Failed to start transcription", err);
-        }
-    }
-  }, [isListening, provider, isDeepgramListening, stopDeepgram, isGeminiListening, toggleGemini, isWebSpeechListening, stopWebSpeech, isAssemblyListening, stopAssembly, isRadioStreaming, startDeepgram, startWebSpeech, startAssembly, tabStream, selectedAudioInput]);
-
-  const handleToggleRadioStream = useCallback(async () => {
-      // Logic for radio mainly supports Deepgram for now (stream piping)
-      if (isRadioStreaming) {
-          setIsRadioStreaming(false);
-          stopDeepgram(); 
-          return;
-      }
-      
-      // Auto-switch to Deepgram if Radio is selected? Or strictly enforce provider?
-      // Let's enforce provider must be Deepgram for Radio for now, or just try using active provider if supports stream.
-      // Currently only Deepgram hook has startStreamListening.
-      if (provider !== 'deepgram') {
-          // Toast or switch? Let's auto switch for convenience
-          setProvider('deepgram');
-          // Wait for render? No, we likely need to just call it.
-          // But state update is async.
-          // For now, let's just warn or simplistic approach:
-      }
-      
-      try {
-          // We always use Deepgram for the radio stream in this implementation
-          setIsRadioStreaming(true);
-          await startDeepgramStream('https://playerservices.streamtheworld.com/api/livestream-redirect/CSPANRADIOAAC.aac');
-      } catch (err) {
-          setIsRadioStreaming(false);
-      }
-  }, [isRadioStreaming, stopDeepgram, startDeepgramStream, provider]);
-
-  // Effect to handle Deepgram error and switch to Gemini automatically if desired
-  useEffect(() => {
-    if (deepgramError && !isGeminiListening && !isDeepgramListening && !isListening) {
-         // Optional: Auto-fallback logic could go here.
-         // For now, we just display the error.
-    }
-  }, [deepgramError, isGeminiListening, isDeepgramListening, isListening]);
 
   // Check permissions on mount
   const checkPermissions = useCallback(async () => {
@@ -578,7 +380,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   };
 
   // Determine connection state for UI
-  const isConnecting = isDeepgramConnecting || geminiStatus === 'connecting';
+  const isConnecting = false;
 
   return (
     <div className={styles.preJoinPage}>
@@ -707,91 +509,9 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
               ))}
             </select>
           </div>
-
-          {/* Test Microphone with Transcription */}
-          <div className={styles.deviceRow}>
-            <label className={styles.deviceLabel}>🎙️ Test Microphone</label>
-            <button
-              type="button"
-              className={`${styles.testMicButton} ${isListening ? styles.testMicButtonActive : ''}`}
-              onClick={handleToggleListening}
-              disabled={micPermission !== 'granted' || isConnecting}
-            >
-              <span className={styles.testMicText}>
-                {isConnecting ? 'Connecting...' : isListening ? '⏹️ Stop Test' : '▶️ Start Test'}
-              </span>
-              {isListening && (
-                // eslint-disable-next-line react/forbid-component-props
-                <span 
-                  className={styles.audioVisualizer}
-                  style={{ '--audio-level': audioLevel } as React.CSSProperties}
-                >
-                  <span className={`${styles.visualizerBar} ${styles.bar1}`} />
-                  <span className={`${styles.visualizerBar} ${styles.bar2}`} />
-                  <span className={`${styles.visualizerBar} ${styles.bar3}`} />
-                  <span className={`${styles.visualizerBar} ${styles.bar4}`} />
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* New Transcription Sidebar */}
-          <TranscriptionSidebar 
-             isOpen={isSidebarOpen}
-             onClose={() => setIsSidebarOpen(false)}
-             transcript={activeTranscript}
-             interimTranscript={activeInterim}
-             isListening={isListening}
-             provider={provider}
-             onProviderChange={setProvider}
-             onToggleListening={handleToggleListening}
-             tabStream={tabStream}
-             onToggleTabAudio={async () => {
-                if (tabStream) {
-                    tabStream.getTracks().forEach(t => t.stop());
-                    setTabStream(null);
-                } else {
-                    await captureTabAudio();
-                }
-             }}
-             isRadioStreaming={isRadioStreaming}
-             onToggleRadio={handleToggleRadioStream}
-             isGeminiActive={isGeminiListening}
-          />
-          
-          <div className={styles.captionSection}>
-             {/* Caption Toggle Button for Sidebar */}
-             <button
-                type="button"
-                className={`${styles.captionToggleBtn} ${isSidebarOpen ? styles.captionToggleActive : ''}`}
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                title="Toggle Transcription Sidebar"
-             >
-               <CaptionIcon />
-               <span>{isSidebarOpen ? 'Hide Captions' : 'Show Captions'}</span>
-             </button>
-             {isListening && <span className={styles.geminiBadge}>{provider.toUpperCase()} Active</span>}
-          </div>
-
-          {/* Live Transcription Display (In-line if sidebar is closed, or just hidden) */}
-          {/* We'll keep a small preview here if sidebar is closed, or remove it to prefer sidebar. 
-              Let's keep it as a "Recent Caption" box if sidebar is closed. */}
-          {!isSidebarOpen && (activeTranscript || activeInterim || activeError) && (
-            <div className={styles.transcriptionBox}>
-              {activeError && (
-                <p className={styles.transcriptionError}>{activeError}</p>
-              )}
-              {(activeTranscript || activeInterim) && (
-                <p className={styles.transcriptionText}>
-                  {activeTranscript}
-                  {activeInterim && (
-                    <span className={styles.interimText}> {activeInterim}</span>
-                  )}
-                </p>
-              )}
-            </div>
-          )}
         </div>
+
+
 
         {/* Username Input */}
         <div className={styles.usernameSection}>
