@@ -70,6 +70,14 @@ const CONN_DETAILS_ENDPOINT =
   process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details';
 
 // Icons
+import { useOrbitMic } from '@/lib/orbit/hooks/useOrbitMic';
+
+const MicIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
 const ChevronRightIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
     <polyline points="9 18 15 12 9 6" />
@@ -823,6 +831,17 @@ function VideoConferenceComponent(props: {
     setActiveSidebarPanel(panel);
   };
 
+  // Orbit Mic Hook (Lifted)
+  const orbitMicState = useOrbitMic();
+  
+  const handleTranslatorListeningChange = React.useCallback((isListening: boolean) => {
+      // Auto-Mute Logic
+      if (isListening && orbitMicState.isRecording) {
+          // If we start listening (Play Audio), turn off the mic
+          orbitMicState.toggle();
+      }
+  }, [orbitMicState]);
+
   const renderSidebarPanel = () => {
     if (sidebarCollapsed) {
       return null;
@@ -878,6 +897,7 @@ function VideoConferenceComponent(props: {
             roomCode={roomName}
             userId={user?.id || 'guest'}
             audioDevices={audioDevices}
+            onListeningChange={handleTranslatorListeningChange}
           />
         );
       default:
@@ -1035,7 +1055,9 @@ function VideoConferenceComponent(props: {
             audioCaptureOptions={audioCaptureOptions}
             onCaptionToggle={() => setIsTranscriptionEnabled(!isTranscriptionEnabled)}
             isCaptionOpen={isTranscriptionEnabled}
+
             onLanguageChange={setTargetLanguage}
+            orbitMicState={orbitMicState}
           />
           
           <DebugMode />

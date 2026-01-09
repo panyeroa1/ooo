@@ -52,6 +52,7 @@ interface OrbitTranslatorVerticalProps {
   audioDevices?: MediaDeviceInfo[];
   selectedDeviceId?: string;
   onDeviceIdChange?: (deviceId: string) => void;
+  onListeningChange?: (isListening: boolean) => void; // New prop
 }
 
 export function OrbitTranslatorVertical({ 
@@ -60,7 +61,8 @@ export function OrbitTranslatorVertical({
   onLiveTextChange,
   audioDevices = [],
   selectedDeviceId = '',
-  onDeviceIdChange
+  onDeviceIdChange,
+  onListeningChange
 }: OrbitTranslatorVerticalProps) {
   // --- Core state (kept) ---
   const [messages, setMessages] = useState<Array<{
@@ -298,7 +300,11 @@ export function OrbitTranslatorVertical({
         {/* Main Controls */}
         <div className={sharedStyles.agentControls}>
           <button
-            onClick={() => setIsListening((v) => !v)}
+            onClick={() => {
+                 const newVal = !isListening;
+                 setIsListening(newVal);
+                 onListeningChange?.(newVal);
+            }}
             className={`${sharedStyles.agentControlButton} ${
               isListening ? sharedStyles.agentControlButtonActiveListen : ''
             }`}

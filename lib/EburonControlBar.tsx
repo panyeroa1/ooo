@@ -24,7 +24,7 @@ const CaptionsIcon = () => (
   </svg>
 );
 
-import { useOrbitMic } from '@/lib/orbit/hooks/useOrbitMic';
+
 import { OrbitMicVisualizer } from '@/lib/orbit/components/OrbitMicVisualizer';
 import { OrbitFloatingText } from '@/lib/orbit/components/OrbitFloatingText';
 
@@ -214,8 +214,9 @@ interface EburonControlBarProps {
   onCaptionToggle?: () => void;
   isCaptionOpen?: boolean;
   onLanguageChange?: (language: string) => void;
-  onTranslatorToggle?: () => void; // New Prop
-  isTranslatorOpen?: boolean; // New Prop
+  onTranslatorToggle?: () => void;
+  isTranslatorOpen?: boolean;
+  orbitMicState?: any; // Accepting the lifted state
 }
 
 export function EburonControlBar({
@@ -245,6 +246,7 @@ export function EburonControlBar({
   onLanguageChange,
   onTranslatorToggle,
   isTranslatorOpen,
+  orbitMicState,
 }: EburonControlBarProps) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
@@ -277,8 +279,10 @@ export function EburonControlBar({
   const [selectedModel, setSelectedModel] = React.useState<ModelCode>('ORBT');
   const [isModelMenuOpen, setIsModelMenuOpen] = React.useState(false);
 
-  // Orbit Mic Hook
-  const { isRecording: isOrbitMicRecording, transcript: orbitTranscript, isFinal: isOrbitFinal, toggle: toggleOrbitMic, analyser: orbitAnalyser } = useOrbitMic();
+  // Orbit Mic State (Passed down or fallback)
+  const { isRecording: isOrbitMicRecording, transcript: orbitTranscript, isFinal: isOrbitFinal, toggle: toggleOrbitMic, analyser: orbitAnalyser } = orbitMicState || { 
+     isRecording: false, transcript: '', isFinal: false, toggle: () => {}, analyser: null 
+  };
 
   // Audio Visualizer State
   const [audioLevel, setAudioLevel] = React.useState(0);

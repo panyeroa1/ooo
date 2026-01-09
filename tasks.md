@@ -3775,3 +3775,61 @@ Test result:
 
 Status: DONE
 
+
+Task ID: T-0051
+Title: Auto-Mute Orbit Mic on Translation Playback
+Status: IN-PROGRESS
+Owner: Miles
+Related repo or service: ooo, orbitq
+Created: 2026-01-10 10:10
+Last updated: 2026-01-10 10:10
+
+START LOG (fill this before you start coding)
+
+Timestamp: 2026-01-10 10:10
+Current behavior or state:
+- Orbit Mic stays on when "Play Audio" (TTS) is active in Translator, causing potential feedback.
+- useOrbitMic is inside EburonControlBar, accessible only there.
+
+Plan and scope for this task:
+- Lift useOrbitMic to PageClientImpl.
+- Pass state down to Control Bar.
+- In PageClientImpl, callback for Translator "Play Audio" will check if mic is on and toggle it off.
+
+Files or modules expected to change:
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/EburonControlBar.tsx
+- lib/orbit/components/OrbitTranslatorVertical.tsx
+
+Risks or things to watch out for:
+- Prop drilling complexity.
+- Ensuring analyser node references remain valid across re-renders.
+
+WORK CHECKLIST
+
+- [x] Lift state
+- [x] Implement auto-mute
+- [x] Update Props
+
+END LOG
+
+Timestamp: 2026-01-10 10:20
+Summary of what actually changed:
+- Lifted `useOrbitMic` hook from `EburonControlBar` to `PageClientImpl`.
+- Passed `orbitMicState` down to `EburonControlBar` as a prop.
+- Implemented `handleTranslatorListeningChange` in `PageClientImpl` to auto-mute Orbit Mic when Translator TTS plays.
+- Added `onListeningChange` callback to `OrbitTranslatorVertical` to trigger the auto-mute logic.
+
+Files actually modified:
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/EburonControlBar.tsx
+- lib/orbit/components/OrbitTranslatorVertical.tsx
+
+How it was tested:
+- tsc verification (PASSED).
+
+Test result:
+- PASS
+
+Status: DONE
+
