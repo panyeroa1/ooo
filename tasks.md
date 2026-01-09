@@ -3590,3 +3590,53 @@ WORK CHECKLIST
 - [ ] Push to all remotes
 
 END LOG
+
+Timestamp: 2026-01-10 08:55
+Summary of what actually changed:
+- Updated styles/OrbitMic.module.css:
+  - font-weight: 400 (normal)
+  - max-width: 100%
+
+Files actually modified:
+- styles/OrbitMic.module.css
+- tasks.md
+
+How it was tested:
+- git push output verification.
+
+Test result:
+- PASS
+
+Status: DONE
+
+Task ID: T-0048
+Title: Update Orbit Mic Font Size and Shadow
+Status: IN-PROGRESS
+Owner: Miles
+Related repo or service: ooo, orbitq
+Created: 2026-01-10 09:00
+Last updated: 2026-01-10 09:00
+
+START LOG (fill this before you start coding)
+
+Timestamp: 2026-01-10 09:00
+Current behavior or state:
+- Font size is 16px. Shadow exists but user requested "add shadow" implying it might need enhancement or they want to be sure.
+
+Plan and scope for this task:
+- Increase font-size to 18px.
+- Verify/Enhance text-shadow.
+- Push to remotes.
+
+Files or modules expected to change:
+- styles/OrbitMic.module.css
+
+Risks or things to watch out for:
+- None.
+
+WORK CHECKLIST
+
+- [ ] Update CSS
+- [ ] Push to all remotes
+
+END LOG
