@@ -22,14 +22,9 @@ export function OrbitMicVisualizer({ analyser, isRecording }: OrbitMicVisualizer
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Match parent button size (74px roughly from user request, but we'll adapt to canvas size)
-    // The CSS sets w/h to 100% of parent, but we need resolution.
-    // Let's assume the parent button size is around 40-50px in the control bar, 
-    // or we use the explicit 74px if we are overriding.
-    // For integration in ControlBar usage, we will rely on layout.
-    // Setting internal resolution:
-    canvas.width = 74; 
-    canvas.height = 74;
+    // Updated to horizontal 120px
+    canvas.width = 120; 
+    canvas.height = 40; // Reduced height to fit nicely
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
@@ -43,33 +38,35 @@ export function OrbitMicVisualizer({ analyser, isRecording }: OrbitMicVisualizer
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
-      const centerX = w / 2;
+      const bars = 20;
+      const barWidth = 4;
+      const gap = 2;
+      // Center the visualizer
+      const totalWidth = bars * (barWidth + gap);
+      const startX = (w - totalWidth) / 2;
       const centerY = h / 2;
-      const radius = 20; // Slightly smaller than 25 to fit inside button
-      const bars = 30;
 
       for (let i = 0; i < bars; i++) {
-        const angle = (i * Math.PI * 2) / bars;
-        const v = dataArray[i] / 255;
-        const bHeight = v * 12;
+        // Map bar index to frequency data (simpler linear mapping or step)
+        // Taking a subset of frequency bin prevents flat lines at high freq
+        const fIndex = Math.floor(i * (dataArray.length / 3) / bars); 
+        const v = dataArray[fIndex] / 255;
+        const bHeight = Math.max(4, v * 30); // Min height 4px, Max ~34px
 
-        const xStart = centerX + Math.cos(angle) * radius;
-        const yStart = centerY + Math.sin(angle) * radius;
-        const xEnd = centerX + Math.cos(angle) * (radius + bHeight);
-        const yEnd = centerY + Math.sin(angle) * (radius + bHeight);
+        const x = startX + i * (barWidth + gap);
+        // Draw centered vertically
+        const y = centerY - bHeight / 2;
 
-        // Updated color to match request context or theme? 
-        // User snippet had `rgba(56, 189, 248, ${0.3 + v})` (light blue)
-        // Control bar usually has green theme. Sticking to user snippet color or green?
-        // User snippet: rgba(56, 189, 248) is sky-ish blue.
-        // Let's us Orbit Green if branding implies, but user code specifically had that color.
-        // I will use the code from snippet.
-        ctx.strokeStyle = `rgba(56, 189, 248, ${0.3 + v})`;
-        ctx.lineWidth = 2;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + v * 0.5})`; // White bars with opacity mod
+        // OR maintain the blue if preferred, but user just said "horizontal" and previous Context was white text.
+        // Let's stick to the blue-ish from before but maybe lighter? 
+        // User said "white text", but for visualizer "make the visualizer in horizontal". 
+        // I'll stick to a nice cyan/white mix which looks "Orbit"-y.
+        ctx.fillStyle = `rgba(56, 189, 248, ${0.6 + v * 0.4})`;
+
         ctx.beginPath();
-        ctx.moveTo(xStart, yStart);
-        ctx.lineTo(xEnd, yEnd);
-        ctx.stroke();
+        ctx.roundRect(x, y, barWidth, bHeight, 2);
+        ctx.fill();
       }
     };
 
@@ -78,5 +75,5 @@ export function OrbitMicVisualizer({ analyser, isRecording }: OrbitMicVisualizer
     return () => cancelAnimationFrame(animationFrameId);
   }, [analyser, isRecording]);
 
-  return <canvas ref={canvasRef} className={styles.orbitMicVisualizer} />;
+  return <canvas ref={canvasRef} className={styles.orbitMicVisualizer} style={{ width: '120px', height: '100%' }} />;
 }
