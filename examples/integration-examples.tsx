@@ -3,14 +3,21 @@
  * Copy and paste these examples into your components
  */
 
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { useTranscribeAndTranslate } from '@/lib/useTranscribeAndTranslate';
+import { 
+  transcribeAudio, 
+  translateText, 
+  RealtimeTranscribeAndTranslate,
+  checkServiceHealth,
+  ServiceHealth 
+} from '@/services';
+
 // ============================================
 // Example 1: Simple Button to Record and Translate
 // ============================================
-
-'use client';
-
-import { useState } from 'react';
-import { useTranscribeAndTranslate } from '@/lib/useTranscribeAndTranslate';
 
 export function SimpleRecordButton() {
   const { isListening, currentTranscript, currentTranslation, startRealtime, stopRealtime } =
@@ -34,11 +41,6 @@ export function SimpleRecordButton() {
 // ============================================
 // Example 2: File Upload Transcription
 // ============================================
-
-'use client';
-
-import { useState } from 'react';
-import { transcribeAudio } from '@/services';
 
 export function FileUploadTranscription() {
   const [transcript, setTranscript] = useState('');
@@ -74,11 +76,6 @@ export function FileUploadTranscription() {
 // ============================================
 // Example 3: Translate Text Input
 // ============================================
-
-'use client';
-
-import { useState } from 'react';
-import { translateText } from '@/services';
 
 export function TextTranslator() {
   const [text, setText] = useState('');
@@ -125,11 +122,6 @@ export function TextTranslator() {
 // Example 4: Voice-to-Voice Translation
 // ============================================
 
-'use client';
-
-import { RealtimeTranscribeAndTranslate } from '@/services';
-import { useState, useRef } from 'react';
-
 export function VoiceToVoice() {
   const [isActive, setIsActive] = useState(false);
   const [output, setOutput] = useState('');
@@ -172,11 +164,6 @@ export function VoiceToVoice() {
 // Example 5: Batch Process Multiple Files
 // ============================================
 
-'use client';
-
-import { useState } from 'react';
-import { transcribeAudio } from '@/services';
-
 export function BatchProcessor() {
   const [results, setResults] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -218,11 +205,6 @@ export function BatchProcessor() {
 // Example 6: Live Captions
 // ============================================
 
-'use client';
-
-import { useState } from 'react';
-import { useTranscribeAndTranslate } from '@/lib/useTranscribeAndTranslate';
-
 export function LiveCaptions() {
   const [showTranslation, setShowTranslation] = useState(true);
   
@@ -259,11 +241,6 @@ export function LiveCaptions() {
 // ============================================
 // Example 7: Meeting Notes Generator
 // ============================================
-
-'use client';
-
-import { useState } from 'react';
-import { useTranscribeAndTranslate } from '@/lib/useTranscribeAndTranslate';
 
 export function MeetingNotes() {
   const [notes, setNotes] = useState<string[]>([]);
@@ -320,11 +297,6 @@ export function MeetingNotes() {
 // ============================================
 // Example 8: Service Health Check
 // ============================================
-
-'use client';
-
-import { useState, useEffect } from 'react';
-import { checkServiceHealth, ServiceHealth } from '@/services';
 
 export function HealthCheck() {
   const [health, setHealth] = useState<ServiceHealth | null>(null);
