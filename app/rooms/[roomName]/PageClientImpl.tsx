@@ -537,7 +537,7 @@ function VideoConferenceComponent(props: {
   }, []);
 
   // Elevated Deepgram STT State
-  const deepgram = useDeepgramLive({ model: 'nova-3', language: 'multi' });
+  const deepgram = useDeepgramLive({ model: 'nova-2', language: 'multi' });
 
   // Transcription State (Client-Side)
   // This lives alongside the "LiveCaptions" component which handles room-wide broadcasted captions.

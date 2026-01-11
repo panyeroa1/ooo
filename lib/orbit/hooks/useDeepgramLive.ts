@@ -120,29 +120,43 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       analyserRef.current = analyser;
 
       // Build optimized WebSocket URL with accuracy features
-      const model = options.model || 'nova-3';
-      const language = options.language || 'multi';
+      const model = options.model || 'nova-2';
+      const language = options.language || 'en';
       
-      // Base params with accuracy optimizations
+      // 1) Base parameters
       const params = new URLSearchParams({
         model,
-        language,
-        smart_format: 'true',      // Human-readable formatting
-        punctuate: 'true',         // Add punctuation
-        utterances: 'true',        // Phrase-level segmentation
-        interim_results: 'true',   // Real-time feedback
-        endpointing: '100',        // 100ms pause detection (optimal for code-switching)
-        encoding: 'linear16',
-        sample_rate: '48000',
-        words: 'true',             // Word-level data for karaoke effect
-        multichannel: 'true',      // Better for some models
+        smart_format: 'true',
+        punctuate: 'true',
+        utterances: 'true',
+        interim_results: 'true',
+        endpointing: '300',
+        words: 'true',
+        // Removed explicit encoding to let Deepgram auto-detect container (WebM/Opus)
       });
 
-      // Special handling for 'auto' language
-      if (language === 'auto' || language === 'multi') {
+      // 2) Language Handling & Dialect Mapping
+      const DEEPGRAM_LANGUAGE_MAPPINGS: Record<string, string> = {
+        'vls-BE': 'nl-BE',
+        'zea-BE': 'nl-BE',
+        'lim-BE': 'nl-BE',
+        'wa-BE': 'fr-BE',
+        'pcd-BE': 'fr-BE',
+        'fr-CI': 'fr',   // Ivory Coast French
+        'fr-CM': 'fr',   // Cameroon French
+        'en-CM': 'en',   // Cameroon English
+        'byv-CM': 'fr',  // Medumba (fallback to French as it's often spoken in that region)
+        'fil-PH': 'fil', // Filipino
+        'tl-PH': 'fil',  // Tagalog
+        'ceb-PH': 'fil', // Cebuano (fallback to Filipino if not directly supported)
+      };
+
+      const mappedLanguage = DEEPGRAM_LANGUAGE_MAPPINGS[language] || language;
+
+      if (mappedLanguage === 'auto' || mappedLanguage === 'multi') {
         params.set('detect_language', 'true');
-        // If we want to support specific dialects for auto, we can append them
-        // params.append('language', 'nl-BE'); // Example for Flemish
+      } else {
+        params.set('language', mappedLanguage);
       }
 
       // Add diarization if enabled
@@ -158,32 +172,43 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       }
 
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
-
-      // If already listening with a different language, we might need to restart
-      // But for now, start() is called manually.
+      console.log('🔌 Connecting to Deepgram:', wsUrl.replace(apiKey || '', '***'));
+      console.log('🔑 API Key Length:', apiKey?.length || 0);
 
       // Connect to Deepgram
       const socket = new WebSocket(wsUrl, ['token', apiKey]);
       socketRef.current = socket;
 
+      console.log('⏳ WebSocket state:', socket.readyState);
+
       socket.onopen = () => {
+        console.log('✅ Deepgram WebSocket opened');
         setIsListening(true);
         
-        // Start recording with optimal settings for Deepgram
-        // Using audio/webm with opus for browser compatibility
-        const recorder = new MediaRecorder(stream, { 
-          mimeType: 'audio/webm;codecs=opus',
-          audioBitsPerSecond: 128000
-        });
-        recorderRef.current = recorder;
+        try {
+          // Start recording with optimal settings for Deepgram
+          // Using audio/webm with opus for browser compatibility
+          const recorder = new MediaRecorder(stream, { 
+            mimeType: 'audio/webm;codecs=opus',
+            audioBitsPerSecond: 128000
+          });
+          recorderRef.current = recorder;
 
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-            socket.send(event.data);
-          }
-        };
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+              socket.send(event.data);
+            }
+          };
 
-        recorder.start(100); // Send chunks every 100ms for lower latency
+          recorder.onerror = (err) => console.error('📽 MediaRecorder error:', err);
+          recorder.onstart = () => console.log('📽 MediaRecorder started');
+
+          recorder.start(100); // Send chunks every 100ms for lower latency
+        } catch (recErr) {
+          console.error('❌ Failed to start MediaRecorder:', recErr);
+          setError('Failed to start audio recording');
+          stop();
+        }
       };
 
       socket.onmessage = (event) => {
@@ -212,13 +237,18 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
         }
       };
 
-      socket.onerror = () => {
-        setError('Deepgram connection error');
+      socket.onerror = (error) => {
+        console.error('Deepgram WebSocket error:', error);
+        setError('Deepgram connection error. Check console for details.');
         stop();
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
+        console.log('Deepgram WebSocket closed:', event.code, event.reason);
         setIsListening(false);
+        if (event.code !== 1000) {
+          setError(`Deepgram connection closed unexpectedly (${event.code})`);
+        }
       };
 
     } catch (e: any) {

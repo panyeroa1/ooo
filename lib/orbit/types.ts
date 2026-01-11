@@ -141,6 +141,21 @@ export const LANGUAGES: Language[] = [
   { code: 'de-BE', name: 'German (Belgium)', flag: '🇧🇪' },
   { code: 'pcd-BE', name: 'Picard (Belgium)', flag: '🇧🇪' },
 
+  // --- African Regional Languages ---
+  { code: 'fr-CI', name: 'French (Ivory Coast)', flag: '🇨🇮' },
+  { code: 'fr-CM', name: 'French (Cameroon)', flag: '🇨🇲' },
+  { code: 'en-CM', name: 'English (Cameroon)', flag: '🇨🇲' },
+  { code: 'byv-CM', name: 'Medumba (Cameroon)', flag: '🇨🇲' },
+  { code: 'wo-SN', name: 'Wolof (Senegal)', flag: '🇸🇳' },
+
+  // --- Philippines Regional Languages ---
+  { code: 'fil-PH', name: 'Filipino (Philippines)', flag: '🇵🇭' },
+  { code: 'tl-PH', name: 'Tagalog (Philippines)', flag: '🇵🇭' },
+  { code: 'ceb-PH', name: 'Cebuano (Philippines)', flag: '🇵🇭' },
+  { code: 'ilo-PH', name: 'Ilocano (Philippines)', flag: '🇵🇭' },
+  { code: 'hil-PH', name: 'Hiligaynon (Philippines)', flag: '🇵🇭' },
+  { code: 'war-PH', name: 'Waray (Philippines)', flag: '🇵🇭' },
+
   // --- Italy & Neighbors ---
   { code: 'it-IT', name: 'Italian (Italy)', flag: '🇮🇹' },
   { code: 'it-CH', name: 'Italian (Switzerland)', flag: '🇨🇭' },
