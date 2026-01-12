@@ -81,6 +81,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   const [username, setUsername] = useState(defaults?.username || '');
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [targetLanguage, setTargetLanguage] = useState<string>('West Flemish (Belgium)');
 
   // Set initial values after mount to avoid hydration mismatch
   useEffect(() => {
@@ -376,6 +377,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
       videoDeviceId: selectedVideo,
       audioDeviceId: selectedAudioInput,
       audioOutputDeviceId: selectedAudioOutput,
+      targetLanguage,
     });
   };
 
@@ -513,6 +515,23 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
               {videoDevices.map((device) => (
                 <option key={device.deviceId} value={device.deviceId}>
                   {device.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className={styles.deviceRow}>
+            <label className={styles.deviceLabel}>🌐 Translator Language</label>
+            <select
+              className={styles.deviceSelect}
+              value={targetLanguage}
+              onChange={(e) => setTargetLanguage(e.target.value)}
+              title="Select language for translation"
+            >
+              <option value="" disabled>Select Language...</option>
+              {LANGUAGES.slice(1).map((lang) => (
+                <option key={lang.code} value={lang.name}>
+                  {lang.flag} {lang.name}
                 </option>
               ))}
             </select>

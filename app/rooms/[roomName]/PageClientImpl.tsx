@@ -8,10 +8,6 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/lib/orbit/services/supabaseClient';
 import { useAuth } from '@/components/AuthProvider';
 import { RecordingIndicator } from '@/lib/RecordingIndicator';
-import { ConnectionDetails } from '@/lib/types';
-import { EburonControlBar } from '@/lib/EburonControlBar';
-import { subscribeToRoom, tryAcquireSpeaker, releaseSpeaker, claimHost, toggleFloorLock, setConversationMode } from '@/lib/orbit/services/roomStateService';
-import { RoomState } from '@/lib/orbit/types';
 import { OrbitIcon } from '@/lib/orbit/components/OrbitTranslatorVertical';
 
 import { ChatPanel } from '@/lib/ChatPanel';
@@ -21,7 +17,7 @@ import { LiveCaptions } from '@/lib/LiveCaptions';
 import { CustomPreJoin } from '@/lib/CustomPreJoin';
 import { useDeepgramLive } from '@/lib/orbit/hooks/useDeepgramLive';
 import { ensureRoomState } from '@/lib/orbit/services/orbitService';
-import { LANGUAGES } from '@/lib/orbit/types';
+import { LANGUAGES, RoomState } from '@/lib/orbit/types';
 import { useOrbitTranslator } from '@/lib/orbit/hooks/useOrbitTranslator';
 import { VisualizerRing } from '@/lib/orbit/components/VisualizerRing';
 
@@ -47,6 +43,11 @@ import {
   RoomAudioRenderer,
   ConnectionStateToast,
 } from '@livekit/components-react';
+
+type ExtendedUserChoices = LocalUserChoices & {
+  targetLanguage?: string;
+};
+
 import { useMeetingFloor } from '@/lib/useMeetingFloor';
 import { useParams } from 'next/navigation';
 import {
@@ -317,7 +318,7 @@ export function PageClientImpl(props: {
   codec: VideoCodec;
 }) {
   const [connectionDetails, setConnectionDetails] = React.useState<ConnectionDetails>();
-  const [preJoinChoices, setPreJoinChoices] = React.useState<LocalUserChoices>();
+  const [preJoinChoices, setPreJoinChoices] = React.useState<ExtendedUserChoices>();
   const [isLoading, setIsLoading] = React.useState(false);
 
   const {
@@ -341,7 +342,7 @@ export function PageClientImpl(props: {
   );
 
   const handlePreJoinSubmit = React.useCallback(
-    (values: LocalUserChoices) => {
+    (values: ExtendedUserChoices) => {
       saveAudioInputEnabled(values.audioEnabled);
       saveVideoInputEnabled(values.videoEnabled);
       saveAudioInputDeviceId(values.audioDeviceId);
@@ -376,6 +377,7 @@ export function PageClientImpl(props: {
          audioEnabled: userChoices.audioEnabled ?? true,
          videoDeviceId: userChoices.videoDeviceId ?? 'default',
          audioDeviceId: userChoices.audioDeviceId ?? 'default',
+         targetLanguage: 'West Flemish (Belgium)', // Default fallback for auto-join
        });
     }
   }, [props.roomName, userChoices]);
@@ -439,8 +441,13 @@ export function PageClientImpl(props: {
   );
 }
 
+import { ConnectionDetails } from '@/lib/types';
+import { EburonControlBar } from '@/lib/EburonControlBar';
+import { subscribeToRoom, tryAcquireSpeaker, releaseSpeaker, claimHost, toggleFloorLock, setConversationMode } from '@/lib/orbit/services/roomStateService';
+
+// ExtendedUserChoices defined below near imports
 function VideoConferenceComponent(props: {
-  userChoices: LocalUserChoices;
+  userChoices: ExtendedUserChoices;
   connectionDetails: ConnectionDetails;
   options: { hq: boolean; codec: VideoCodec };
 }) {
@@ -459,7 +466,7 @@ function VideoConferenceComponent(props: {
     lockVersion: 0 
   });
   const [sourceLanguage, setSourceLanguage] = React.useState('multi');
-  const [targetLanguage, setTargetLanguage] = React.useState('West Flemish (Belgium)');
+  const [targetLanguage, setTargetLanguage] = React.useState(props.userChoices.targetLanguage || 'West Flemish (Belgium)');
   const [roomId, setRoomId] = React.useState<string | null>(null);
   const [hostId, setHostId] = React.useState<string | null>(null);
 

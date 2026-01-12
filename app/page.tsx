@@ -51,12 +51,12 @@ export default function Page() {
 
         <div className={styles.bento}>
           <div className={`${styles.tile} ${styles.tileLarge}`} onClick={createClass}>
-            <div className={styles.tileIconLarge}>🎙️</div>
+            <div className={styles.tileIconLarge}>⚡</div>
             <h3>Start Instant Class</h3>
             <p className={styles.tileSubtitle}>Create Room & Take Floor</p>
           </div>
           <div className={styles.tile} onClick={() => setShowJoinArea(true)}>
-            <div className={styles.tileIcon}>🔗</div>
+            <div className={styles.tileIcon}>🔓</div>
             <h3>Join</h3>
           </div>
           <div className={styles.tile} onClick={() => alert('Coming soon!')}>

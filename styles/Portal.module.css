@@ -1,6 +1,7 @@
 .body { 
   margin: 0; 
   background: var(--bg); 
+  background-image: radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.15), transparent 70%);
   color: #fff; 
   display: flex; 
   align-items: center; 
@@ -8,6 +9,206 @@
   height: 100vh; 
   overflow: hidden; 
   width: 100%;
+  font-family: var(--font-sans);
+}
+
+.settingsBtn { 
+  position: fixed; 
+  top: 30px; 
+  right: 30px; 
+  color: rgba(255, 255, 255, 0.4); 
+  transition: all 0.4s ease; 
+  cursor: pointer; 
+  z-index: 100; 
+}
+
+.settingsBtn:hover { 
+  color: var(--gold); 
+  transform: rotate(90deg) scale(1.1); 
+}
+
+.container { 
+  width: 90%; 
+  max-width: 520px; 
+  text-align: center; 
+  animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1); 
+}
+
+.title { 
+  font-weight: 800; 
+  font-size: 3rem; 
+  margin: 0; 
+  letter-spacing: -2px; 
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #fff 40%, rgba(255, 255, 255, 0.4));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.title span { 
+  color: var(--gold); 
+  background: linear-gradient(135deg, var(--gold), #f1c40f);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.bento { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 16px; 
+  margin-top: 50px;
+}
+
+.tile { 
+  background: rgba(255, 255, 255, 0.03); 
+  border: 1px solid rgba(255, 255, 255, 0.08); 
+  padding: 32px 24px; 
+  border-radius: 24px; 
+  cursor: pointer; 
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+  position: relative;
+  overflow: hidden;
+}
+
+.tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(212, 175, 55, 0.1), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tile:hover { 
+  border-color: rgba(212, 175, 55, 0.5); 
+  transform: translateY(-8px); 
+  background: rgba(255, 255, 255, 0.05); 
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.tile:hover::before {
+  opacity: 1;
+}
+
+.tileLarge { 
+  grid-column: span 2; 
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.4)); 
+}
+
+.tile h3 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.input { 
+  width: 100%; 
+  padding: 18px; 
+  border-radius: 16px; 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  background: rgba(0, 0, 0, 0.6); 
+  color: #fff; 
+  margin-top: 15px; 
+  text-align: center; 
+  font-family: monospace; 
+  font-size: 1.1rem; 
+  box-sizing: border-box; 
+  transition: all 0.3s ease;
+}
+
+.input:focus { 
+  border-color: var(--gold); 
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+  outline: none; 
+}
+
+.btn { 
+  width: 100%; 
+  padding: 18px; 
+  border-radius: 16px; 
+  border: none; 
+  font-weight: 700; 
+  cursor: pointer; 
+  background: var(--gold); 
+  background-image: linear-gradient(135deg, var(--gold), #d4a017);
+  color: #000; 
+  margin-top: 12px; 
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.4);
+  filter: brightness(1.1);
+}
+
+.authStatus { 
+  margin-top: 60px; 
+  font-size: 11px; 
+  color: rgba(255, 255, 255, 0.3); 
+  letter-spacing: 1.5px; 
+  text-transform: uppercase; 
+  font-weight: 600; 
+}
+
+.tileIcon { 
+  font-size: 1.8rem; 
+  margin-bottom: 12px; 
+  opacity: 0.8;
+  transition: transform 0.3s ease;
+}
+
+.tile:hover .tileIcon {
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.tileIconLarge { 
+  font-size: 2.4rem; 
+  margin-bottom: 15px; 
+  opacity: 0.9;
+}
+
+.tileSubtitle { 
+  font-size: 0.8rem; 
+  color: rgba(255, 255, 255, 0.4); 
+  font-weight: 400;
+}
+
+.joinArea { 
+  margin-top: 30px; 
+  animation: fadeIn 0.4s ease; 
+}
+
+.onlineStatus { 
+  color: #43e97b; 
+  text-shadow: 0 0 10px rgba(67, 233, 123, 0.4);
+}
+
+.offlineStatus { 
+  color: #ff4b4b; 
+}
+
+@keyframes fadeIn { 
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  } 
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  } 
 }
 
 .settingsBtn { 

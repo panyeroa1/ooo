@@ -5,8 +5,329 @@
   min-height: 100vh;
   padding: 2rem;
   background: var(--bg);
+  background-image: radial-gradient(circle at 50% 10%, rgba(212, 175, 55, 0.08), transparent 60%);
   color: #fff;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
+}
+
+.preJoinContainer {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.preJoinHeader {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.preJoinTitle {
+  font-weight: 800;
+  font-size: 2.2rem;
+  margin: 0;
+  letter-spacing: -1.5px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #fff 40%, rgba(255, 255, 255, 0.4));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.preJoinTitle span {
+  color: var(--gold);
+   background: linear-gradient(135deg, var(--gold), #d4a017);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.preJoinSubtitle {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+
+.videoPreviewCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  transition: border-color 0.3s ease;
+}
+
+.videoPreviewCard:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.videoPreview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: #000;
+}
+
+.videoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #111, #050505);
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 3rem;
+}
+
+.videoControls {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mediaButton {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mediaButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.mediaButtonActive {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+.mediaButtonActive:hover {
+  background: #f0f0f0;
+}
+
+.mediaButtonMuted {
+  background: rgba(220, 38, 38, 0.2);
+  border-color: rgba(220, 38, 38, 0.5);
+  color: #ef4444;
+}
+
+.mediaButtonMuted:hover {
+  background: rgba(220, 38, 38, 0.3);
+}
+
+.deviceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.deviceRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.deviceLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: 4px;
+}
+
+.deviceSelect {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+  font-size: 0.95rem;
+  appearance: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.25rem center;
+  opacity: 0.9;
+}
+
+.deviceSelect:focus, .deviceSelect:hover {
+  outline: none;
+  border-color: var(--gold);
+  background-color: rgba(255, 255, 255, 0.06);
+  opacity: 1;
+}
+
+.deviceSelect option {
+  background: #111;
+  color: #fff;
+  padding: 0.75rem;
+}
+
+.usernameSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.usernameInput {
+  width: 100%;
+  padding: 1.1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+  font-size: 1.1rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.usernameInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.usernameInput:focus {
+  outline: none;
+  border-color: var(--gold);
+  background-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+}
+
+.joinButton {
+  width: 100%;
+  padding: 1.1rem;
+  border-radius: 16px;
+  border: none;
+  background: var(--gold);
+  background-image: linear-gradient(135deg, var(--gold), #d4a017);
+  color: #000;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+.joinButton:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+}
+
+.joinButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  background: #333;
+  color: #666;
+}
+
+.backLink {
+  display: block;
+  text-align: center;
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  font-weight: 500;
+}
+
+.backLink:hover {
+  color: var(--gold);
+}
+
+.permissionError {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.permissionError p {
+  margin: 0 0 1rem;
+  color: #fca5a5;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.retryButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retryButton:hover {
+  background: rgba(212, 175, 55, 0.2);
+}
+
+.deviceGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .deviceGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .preJoinPage {
+    padding: 1rem;
+  }
+  
+  .preJoinTitle {
+    font-size: 1.8rem;
+  }
 }
 
 .preJoinContainer {
