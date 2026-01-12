@@ -16,6 +16,12 @@ export default function Page() {
   useEffect(() => {
     async function boot() {
       try {
+        if (!supabase) {
+           console.warn("Supabase not configured, skipping auth.");
+           setAuthStatus('OFFLINE (No DB)');
+           return;
+        }
+
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error) throw error;
         if (data?.user) {
