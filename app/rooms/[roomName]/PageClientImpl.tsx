@@ -672,7 +672,16 @@ function RoomInner(props: {
         deepgram.stop();
       }
     }
-  }, [isListening, isTranscriptionEnabled, orbitMicState.isRecording, deepgram, lkRoom, props.userChoices.audioDeviceId]);
+  }, [
+    isListening, 
+    isTranscriptionEnabled, 
+    orbitMicState.isRecording, 
+    deepgram.isListening, 
+    deepgram.start, 
+    deepgram.stop, 
+    lkRoom, 
+    props.userChoices.audioDeviceId
+  ]);
 
   // Feed transcription into translator AND update RTDB
   React.useEffect(() => {

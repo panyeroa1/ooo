@@ -86,10 +86,16 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
     analyserRef.current = null;
   }, []);
 
+  const startingRef = useRef(false);
+
   const start = useCallback(async (deviceId?: string) => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+
     const apiKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
     if (!apiKey || apiKey === 'YOUR_DEEPGRAM_API_KEY') {
       console.warn("[Orbit] Deepgram Key is missing. Voice transcription disabled.");
+      startingRef.current = false;
       return; 
     }
 
@@ -99,7 +105,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
     setIsFinal(false);
 
     try {
-      // Get microphone stream with high quality audio
+      // ... existing getUserMedia and AudioContext setup ...
       const constraints: MediaStreamConstraints = {
         audio: deviceId 
           ? { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true }
@@ -108,7 +114,6 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
-      // Set up AudioContext and Analyser for visualization
       const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
       const audioContext = new AudioContextClass();
       audioContextRef.current = audioContext;
@@ -116,14 +121,12 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
-      source.connect(analyser); // We don't need to connect to destination (speakers)
+      source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Build optimized WebSocket URL with accuracy features
       const model = options.model || 'nova-3';
       const language = options.language || 'en';
       
-      // 1) Base parameters
       const params = new URLSearchParams({
         model,
         smart_format: 'true',
@@ -132,23 +135,21 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
         interim_results: 'true',
         endpointing: '100',
         words: 'true',
-        // Removed explicit encoding to let Deepgram auto-detect container (WebM/Opus)
       });
 
-      // 2) Language Handling & Dialect Mapping
       const DEEPGRAM_LANGUAGE_MAPPINGS: Record<string, string> = {
         'vls-BE': 'nl-BE',
         'zea-BE': 'nl-BE',
         'lim-BE': 'nl-BE',
         'wa-BE': 'fr-BE',
         'pcd-BE': 'fr-BE',
-        'fr-CI': 'fr',   // Ivory Coast French
-        'fr-CM': 'fr',   // Cameroon French
-        'en-CM': 'en',   // Cameroon English
-        'byv-CM': 'fr',  // Medumba (fallback to French as it's often spoken in that region)
-        'fil-PH': 'fil', // Filipino
-        'tl-PH': 'fil',  // Tagalog
-        'ceb-PH': 'fil', // Cebuano (fallback to Filipino if not directly supported)
+        'fr-CI': 'fr',
+        'fr-CM': 'fr',
+        'en-CM': 'en',
+        'byv-CM': 'fr',
+        'fil-PH': 'fil',
+        'tl-PH': 'fil',
+        'ceb-PH': 'fil',
       };
 
       const mappedLanguage = DEEPGRAM_LANGUAGE_MAPPINGS[language] || language;
@@ -159,57 +160,29 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
         params.set('language', mappedLanguage);
       }
 
-      // Add diarization if enabled
       if (options.diarize) {
         params.set('diarize', 'true');
       }
 
-      // Add keyword boosting
       if (options.keywords?.length) {
         options.keywords.forEach(kw => {
           params.append('keywords', kw);
         });
       }
 
-      // Append token to query params for robust browser connection
-      console.log('🔍 Debug - Raw API Key from env:', process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY?.substring(0, 10) + '...');
-      console.log('🔍 Debug - API Key variable:', apiKey?.substring(0, 10) + '...');
-      
-      if (apiKey) {
-        params.append('token', apiKey.trim());
-        console.log('✅ Token appended to params');
-      } else {
-        const msg = '❌ Orbit API Key is missing! Aborting connection.';
-        console.error(msg);
-        setError(msg);
-        setIsListening(false);
-        return;
-      }
+      params.append('token', apiKey.trim());
 
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
-      console.log('🔌 Full WebSocket URL (token masked):', wsUrl.replace(/token=[^&]+/, 'token=***'));
-      console.log('🔑 Token included in URL:', wsUrl.includes('token='));
-
-      let socket: WebSocket;
-      try {
-        socket = new WebSocket(wsUrl);
-      } catch (e) {
-        console.error("Failed to create WebSocket:", e);
-        setError('Failed to create WebSocket connection');
-        setIsListening(false);
-        return;
-      }
       
+      const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log('✅ Orbit Engine connected successfully');
         setIsListening(true);
         setError(null);
+        startingRef.current = false;
         
         try {
-          // Start recording with optimal settings for Orbit
-          // Using audio/webm with opus for browser compatibility
           const recorder = new MediaRecorder(stream, { 
             mimeType: 'audio/webm;codecs=opus',
             audioBitsPerSecond: 128000
@@ -222,12 +195,8 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
             }
           };
 
-          recorder.onerror = (err) => console.error('📽 Engine Error:', err);
-          recorder.onstart = () => console.log('📽 Orbit STT started');
-
-          recorder.start(100); // Send chunks every 100ms for lower latency
+          recorder.start(100);
         } catch (recErr) {
-          console.error('❌ Failed to start audio capture:', recErr);
           setError('Failed to start audio recording');
           stop();
         }
@@ -243,12 +212,11 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
           if (text) {
             setTranscript(text);
             if (newWords.length > 0) {
-              setWords(prev => data.is_final ? newWords : [...newWords]); // Simplified for interim
+              setWords(prev => data.is_final ? newWords : [...newWords]);
             }
             setIsFinal(data.is_final ?? false);
           }
 
-          // Capture detected language from metadata or results
           if (data.metadata?.language) {
              setDetectedLanguage(data.metadata.language);
           } else if (data.results?.channels?.[0]?.detected_language) {
@@ -260,30 +228,27 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       };
 
       socket.onerror = (error) => {
-        console.error('Orbit Engine error:', error);
-        setError('Orbit connection error. Check console for details.');
+        setError('Orbit connection error');
+        startingRef.current = false;
         stop();
       };
 
       socket.onclose = (event) => {
-        console.log('Orbit connection closed:', event.code, event.reason);
         setIsListening(false);
-        if (event.code !== 1000) {
-          setError(`Orbit connection closed unexpectedly (${event.code})`);
-        }
+        startingRef.current = false;
       };
 
     } catch (e: any) {
       setError(e.message || 'Microphone access denied');
+      startingRef.current = false;
       stop();
     }
-  }, [options.model, options.diarize, options.keywords, stop, currentLanguage]);
+  }, [options.model, options.diarize, options.keywords, stop, options.language]);
 
   const setLanguage = useCallback((lang: string) => {
     if (lang !== currentLanguage) {
       setCurrentLanguage(lang);
       if (isListening) {
-        // Restart with new language
         const currentDeviceId = recorderRef.current?.stream.getAudioTracks()[0]?.getSettings().deviceId;
         stop();
         setTimeout(() => start(currentDeviceId), 100);
@@ -298,7 +263,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
     };
   }, [stop]);
 
-  return {
+  return useMemo(() => ({
     isListening,
     transcript,
     isFinal,
@@ -310,5 +275,16 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
     analyser: analyserRef.current,
     words,
     detectedLanguage
-  };
+  }), [
+    isListening,
+    transcript,
+    isFinal,
+    start,
+    stop,
+    setLanguage,
+    currentLanguage,
+    error,
+    words,
+    detectedLanguage
+  ]);
 }
