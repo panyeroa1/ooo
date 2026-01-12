@@ -302,6 +302,7 @@ export const LANGUAGES: Language[] = [
   { code: 'akl-PH', name: 'Aklanon', flag: '🇵🇭' },
   { code: 'msb-PH', name: 'Masbateño', flag: '🇵🇭' },
   { code: 'sur-PH', name: 'Surigaonon', flag: '🇵🇭' },
+  { code: 'tl-mix', name: 'Taglish (Tagalog-English Mix)', flag: '🇵🇭' },
 
   // --- Africa (Pan) ---
   { code: 'sw-KE', name: 'Swahili (Kenya)', flag: '🇰🇪' },

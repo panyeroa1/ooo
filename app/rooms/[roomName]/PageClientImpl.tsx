@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { decodePassphrase } from '@/lib/client-utils';
-import { DebugMode } from '@/lib/Debug';
-import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
+
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/orbit/services/supabaseClient';
 import { useAuth } from '@/components/AuthProvider';
