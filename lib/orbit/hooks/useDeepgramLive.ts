@@ -55,6 +55,12 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [currentLanguage, setCurrentLanguage] = useState(options.language || 'multi');
 
+  useEffect(() => {
+    if (options.language && options.language !== currentLanguage) {
+      setCurrentLanguage(options.language);
+    }
+  }, [options.language, currentLanguage]);
+
   const socketRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -62,7 +68,9 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const stop = useCallback(() => {
+    console.log("🔌 Orbit: Stopping transcription engine...");
     setIsListening(false);
+    startingRef.current = false;
     
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
@@ -89,8 +97,12 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
   const startingRef = useRef(false);
 
   const start = useCallback(async (deviceId?: string) => {
-    if (startingRef.current) return;
+    if (startingRef.current) {
+      console.log("⏳ Orbit: Transcription engine is already starting...");
+      return;
+    }
     startingRef.current = true;
+    console.log("🔌 Orbit: Starting transcription engine...");
 
     const apiKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
     if (!apiKey || apiKey === 'YOUR_DEEPGRAM_API_KEY') {
@@ -170,11 +182,9 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
         });
       }
 
-      params.append('token', apiKey.trim());
-
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
       
-      const socket = new WebSocket(wsUrl);
+      const socket = new WebSocket(wsUrl, ['token', apiKey.trim()]);
       socketRef.current = socket;
 
       socket.onopen = () => {

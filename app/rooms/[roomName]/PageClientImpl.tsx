@@ -651,7 +651,7 @@ function RoomInner(props: {
     lastClickTime: { current: null as number | null }
   }), []);
 
-  const deepgram = useDeepgramLive({ model: 'nova-3', language: 'multi' });
+  const deepgram = useDeepgramLive({ model: 'nova-3', language: sourceLanguage });
   const orbitMicState = useOrbitMic({ language: sourceLanguage, passive: true });
   const translator = useOrbitTranslator({
     targetLanguage,
