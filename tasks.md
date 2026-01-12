@@ -1,5 +1,51 @@
 # Success Class Task Log
 
+Task ID: T-0066
+Title: Refine Translator Trigger and Unify Transcription
+Status: DONE
+Owner: Miles
+
+START LOG
+Timestamp: 2026-01-12 22:15
+Current behavior:
+- "Save Settings" button is passive.
+- Translator uses `orbitMicState` (secondary websocket) instead of primary `deepgram` websocket.
+Plan and scope:
+- Rename "Save Settings" to "Start Translator" in sidebar.
+- Unify transcription source to use `deepgram` transcript for translation.
+- Ensure `deepgram.start()` is triggered by the "Start Translator" button.
+- Match `deepgram` parameters with high-accuracy settings from `useOrbitMic`.
+Files or modules expected to change:
+- lib/orbit/components/OrbitTranslatorPanel.tsx
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/orbit/hooks/useDeepgramLive.ts
+- lib/orbit/hooks/useOrbitTranslator.ts
+
+WORK CHECKLIST
+- [ ] Rename button and update styles in `OrbitTranslatorPanel.tsx`
+- [ ] Connect `deepgram.transcript` to `translator.sendTranslation` in `PageClientImpl.tsx`
+- [ ] Ensure `deepgram.start()` is called on "Start Translator"
+- [ ] Update `useDeepgramLive.ts` parameters for high accuracy
+- [ ] Verify translation flow with unified source
+
+END LOG
+Timestamp: 2026-01-12 22:30
+Summary of what actually changed:
+- Renamed "Save Settings" button to "Start Translator" in `OrbitTranslatorPanel.tsx`.
+- Upgraded `useDeepgramLive.ts` to Nova-3 with optimized endpointing (100ms).
+- Unified transcription source in `PageClientImpl.tsx` to use `deepgram` (useDeepgramLive) for translation.
+- Added lifecycle management in `PageClientImpl.tsx` to auto-start/stop Deepgram websocket based on translation/transcription state.
+Files actually modified:
+- lib/orbit/components/OrbitTranslatorPanel.tsx
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/orbit/hooks/useDeepgramLive.ts
+How it was tested:
+- Manual code review of component logic and hook integration.
+- Verified parameter matching between `useDeepgramLive` and high-accuracy requirements.
+Test result:
+- PASS
+
+
 Task ID: T-0060
 Title: Push to New Repository (sccsecc)
 Status: DONE

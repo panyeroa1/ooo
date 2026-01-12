@@ -325,19 +325,19 @@ export function OrbitTranslatorPanel({
                 onClick={() => { 
                   playClick();
                   if (!isListening) setIsListening(true);
-                  // Simulate "Save" action - in reality, state is already updated
-                  // Could trigger a toast here if we had the hook
+                  // Ensure we trigger any downstream logic that depends on isListening
                 }}
                 style={{ 
                   width: '100%', padding: '10px', borderRadius: '8px', 
-                  background: 'rgba(50, 205, 50, 0.2)', 
-                  border: '1px solid rgba(50, 205, 50, 0.4)', 
-                  color: '#32cd32', 
+                  background: isListening ? 'rgba(50, 205, 50, 0.4)' : 'rgba(50, 205, 50, 0.2)', 
+                  border: `1px solid ${isListening ? '#32cd32' : 'rgba(50, 205, 50, 0.4)'}`, 
+                  color: isListening ? '#fff' : '#32cd32', 
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxShadow: isListening ? '0 0 10px rgba(50, 205, 50, 0.2)' : 'none'
                 }}
               >
-                <span>Save Settings (Fetch Data)</span>
+                <span>{isListening ? 'Translator Active' : 'Start Translator'}</span>
               </button>
 
               <div className={sharedStyles.sidebarCard}>

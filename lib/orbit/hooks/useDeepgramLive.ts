@@ -120,7 +120,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       analyserRef.current = analyser;
 
       // Build optimized WebSocket URL with accuracy features
-      const model = options.model || 'nova-2';
+      const model = options.model || 'nova-3';
       const language = options.language || 'en';
       
       // 1) Base parameters
@@ -130,7 +130,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
         punctuate: 'true',
         utterances: 'true',
         interim_results: 'true',
-        endpointing: '300',
+        endpointing: '100',
         words: 'true',
         // Removed explicit encoding to let Deepgram auto-detect container (WebM/Opus)
       });

@@ -596,7 +596,7 @@ function RoomInner(props: {
 
   // Context-dependent hooks
   const lastClickTime = React.useRef<number | null>(null);
-  const deepgram = useDeepgramLive({ model: 'nova-2', language: 'multi' });
+  const deepgram = useDeepgramLive({ model: 'nova-3', language: 'multi' });
   const orbitMicState = useOrbitMic({ language: sourceLanguage });
   const translator = useOrbitTranslator({
     targetLanguage,
@@ -605,11 +605,27 @@ function RoomInner(props: {
     isSourceSpeaker: roomState?.activeSpeaker?.userId === user?.id
   });
 
+  // Start/Stop Deepgram based on translation/transcription needs
   React.useEffect(() => {
-    if (isListening && roomState?.activeSpeaker?.userId === user?.id && orbitMicState.isFinal && orbitMicState.transcript?.trim()) {
-      translator.sendTranslation(orbitMicState.transcript);
+    const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
+    if (isListening || isTranscriptionEnabled || orbitMicState.isRecording) {
+      if (!deepgram.isListening) {
+        deepgram.start(activeDeviceId);
+      }
+    } else {
+      if (deepgram.isListening) {
+        deepgram.stop();
+      }
     }
-  }, [isListening, roomState?.activeSpeaker?.userId, user?.id, orbitMicState.isFinal, orbitMicState.transcript, translator]);
+  }, [isListening, isTranscriptionEnabled, orbitMicState.isRecording, deepgram, lkRoom, props.userChoices.audioDeviceId]);
+
+  // Feed transcription into translator
+  React.useEffect(() => {
+    // Only send if we are listening AND we have the floor
+    if (isListening && roomState?.activeSpeaker?.userId === user?.id && deepgram.isFinal && deepgram.transcript?.trim()) {
+      translator.sendTranslation(deepgram.transcript);
+    }
+  }, [isListening, roomState?.activeSpeaker?.userId, user?.id, deepgram.isFinal, deepgram.transcript, translator]);
 
   const audioCaptureOptions = React.useMemo<AudioCaptureOptions>(() => {
     const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
