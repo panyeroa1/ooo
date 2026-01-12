@@ -622,14 +622,22 @@ function RoomInner(props: {
   const { playClick, playToggle } = useSound();
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
+  const [aiAgentOnline, setAiAgentOnline] = React.useState(false);
+
+  React.useEffect(() => {
+    const hasAgent = remoteParticipants.some(p => p.identity.toLowerCase().includes('agent') || p.metadata?.toLowerCase().includes('agent'));
+    setAiAgentOnline(hasAgent);
+  }, [remoteParticipants]);
 
   const { activeSpeakerId: floorSpeakerId, isFloorHolder, claimFloor, grantFloor } = useMeetingFloor(roomName || '', user?.id || '');
   const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(true);
 
-  // Context-dependent hooks
-  const lastClickTime = React.useRef<number | null>(null);
+  const { lastClickTime } = React.useMemo(() => ({
+    lastClickTime: { current: null as number | null }
+  }), []);
+
   const deepgram = useDeepgramLive({ model: 'nova-3', language: 'multi' });
-  const orbitMicState = useOrbitMic({ language: sourceLanguage });
+  const orbitMicState = useOrbitMic({ language: sourceLanguage, passive: true });
   const translator = useOrbitTranslator({
     targetLanguage,
     enabled: isListening,
@@ -637,7 +645,7 @@ function RoomInner(props: {
     isSourceSpeaker: roomState?.activeSpeaker?.userId === user?.id
   });
 
-  // Start/Stop Deepgram based on translation/transcription needs
+  // Start/Stop Deepgram based on translation/transcription needs OR Broadcasting
   React.useEffect(() => {
     const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
     if (isListening || isTranscriptionEnabled || orbitMicState.isRecording) {
@@ -651,13 +659,28 @@ function RoomInner(props: {
     }
   }, [isListening, isTranscriptionEnabled, orbitMicState.isRecording, deepgram, lkRoom, props.userChoices.audioDeviceId]);
 
-  // Feed transcription into translator
+  // Feed transcription into translator AND update RTDB
   React.useEffect(() => {
-    // Only send if we are listening AND we have the floor
-    if (isListening && roomState?.activeSpeaker?.userId === user?.id && deepgram.isFinal && deepgram.transcript?.trim()) {
+    // 1. Translation: Only send if we are BROADCASTING AND we have the floor
+    if (orbitMicState.isRecording && roomState?.activeSpeaker?.userId === user?.id && deepgram.isFinal && deepgram.transcript?.trim()) {
       translator.sendTranslation(deepgram.transcript);
     }
-  }, [isListening, roomState?.activeSpeaker?.userId, user?.id, deepgram.isFinal, deepgram.transcript, translator]);
+    
+    // 2. RTDB Sync: Update transcription in RTDB if broadcasting
+    if (orbitMicState.isRecording && deepgram.transcript?.trim()) {
+      import('@/lib/orbit/services/firebase').then(({ rtdb }) => {
+        import('firebase/database').then(({ ref, update, serverTimestamp }) => {
+          const orbitRef = ref(rtdb, 'orbit/live_state');
+          update(orbitRef, {
+            transcript: deepgram.transcript,
+            is_final: deepgram.isFinal,
+            updatedAt: serverTimestamp(),
+            brand: "Orbit"
+          }).catch(e => console.error("Orbit RTDB Update Failed", e));
+        });
+      });
+    }
+  }, [orbitMicState.isRecording, roomState?.activeSpeaker?.userId, user?.id, deepgram.isFinal, deepgram.transcript, translator]);
 
   const audioCaptureOptions = React.useMemo<AudioCaptureOptions>(() => {
     const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
@@ -901,9 +924,17 @@ function RoomInner(props: {
             incomingTranslations={translator.incomingTranslations}
             isProcessing={translator.isProcessing}
             error={translator.error}
+            aiAgentOnline={aiAgentOnline}
             // New props for sidebar settings
             hearRawAudio={hearRawAudio} setHearRawAudio={setHearRawAudio}
-            orbitMicState={orbitMicState}
+            // UNIFIED STT: Override orbitMicState with deepgram data
+            orbitMicState={{
+                ...orbitMicState,
+                transcript: deepgram.transcript,
+                isFinal: deepgram.isFinal,
+                isRecording: orbitMicState.isRecording, // Keep control flow
+                analyser: deepgram.analyser // Use accurate visualizer
+            }}
             sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage}
             // Stats
             totalParticipants={total}

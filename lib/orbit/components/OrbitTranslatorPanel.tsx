@@ -44,6 +44,7 @@ interface OrbitTranslatorPanelProps {
   // State
   isProcessing: boolean;
   error: string | null;
+  aiAgentOnline?: boolean;
 }
 
 export function OrbitTranslatorPanel({ 
@@ -67,6 +68,7 @@ export function OrbitTranslatorPanel({
   isProcessing,
 
   error,
+  aiAgentOnline = false,
   // Stats
   totalParticipants = 1,
   speakingCount = 0,
@@ -121,6 +123,21 @@ export function OrbitTranslatorPanel({
           <h3>Success Class Translator</h3>
           <span className={sharedStyles.sidebarHeaderMeta}>
             Real-time Translation System
+            {aiAgentOnline && (
+              <span style={{ 
+                marginLeft: '8px', 
+                color: '#10b981', 
+                fontSize: '10px', 
+                fontWeight: 700, 
+                background: 'rgba(16, 185, 129, 0.1)', 
+                padding: '2px 6px', 
+                borderRadius: '4px',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                textTransform: 'uppercase'
+              }}>
+                Neural Agent: Online
+              </span>
+            )}
           </span>
         </div>
       </div>

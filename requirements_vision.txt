@@ -1,0 +1,3 @@
+vision-agents[fast-whisper]
+python-dotenv
+getstream-video-python

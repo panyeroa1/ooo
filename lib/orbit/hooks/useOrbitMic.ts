@@ -10,10 +10,11 @@ export interface UseOrbitMicOptions {
   source?: OrbitAudioSource;
   language?: string;
   autoStart?: boolean;
+  passive?: boolean; // If true, don't start internal STT, just manage state
 }
 
 export function useOrbitMic(options: UseOrbitMicOptions = {}) {
-  const { source: initialSource = 'microphone', language = 'multi' } = options;
+  const { source: initialSource = 'microphone', language = 'multi', passive = false } = options;
   const [source, setSource] = useState<OrbitAudioSource>(initialSource);
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -69,6 +70,10 @@ export function useOrbitMic(options: UseOrbitMicOptions = {}) {
     stop();
 
     try {
+      if (passive) {
+        setIsRecording(true);
+        return;
+      }
       let stream: MediaStream;
       
       if (source === 'screen') {
