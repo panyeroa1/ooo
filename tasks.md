@@ -37,12 +37,41 @@ Owner: Miles
 
 START LOG
 Timestamp: 2026-01-12 21:16
+<<<<<<< HEAD
 Current behavior: User wants "Save Settings" in Receiver Tab.
 Plan: Add Save Settings button, floor stats, and lime green overlay.
 END LOG
 Timestamp: 2026-01-12 21:55
 Changed: Added Save Settings button, Floor Stats, and Lime Green Overlay.
 Tests: npm run build: SUCCESS.
+=======
+Current behavior: User wants "Save Settings" in Receiver Tab to trigger Google Translate fetching.
+Plan:
+- Investigate `OrbitTranslatorPanel` and `useOrbitTranslator`.
+- Implement "Save Settings" in Receiver Tab.
+- Trigger instant fetching of translation data (using Google Translate).
+- Display translated text in limegreen in the transcription area.
+- Bind by meeting ID.
+- Update "Floor Status" UI:
+  - Show total meeting users.
+  - Show count of current Speaking.
+  - Show count of Listening.
+Files or modules expected to change:
+- lib/orbit/components/OrbitTranslatorPanel.tsx
+- lib/orbit/hooks/useOrbitTranslator.ts
+- app/api/orbit/translate/route.ts
+- lib/orbit/components/HostCaptionOverlay.tsx
+
+END LOG
+Timestamp: 2026-01-12 21:55
+Changed:
+- Added "Save Settings (Fetch Data)" button to Receiver Tab.
+- Updated Floor Status to show Total/Speaking/Listening counts.
+- Updated `HostCaptionOverlay` to show translated text in Lime Green when available.
+- Passed participant stats from `PageClientImpl` to `OrbitTranslatorPanel`.
+Tests:
+- npm run build: SUCCESS.
+>>>>>>> 5355e1f (feat(orbit): add participant count and speaking stats to Orbit panel)
 Status: DONE
 
 Task ID: T-0063

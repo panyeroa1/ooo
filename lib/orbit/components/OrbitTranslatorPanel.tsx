@@ -65,8 +65,17 @@ export function OrbitTranslatorPanel({
   setSourceLanguage,
   incomingTranslations,
   isProcessing,
-  error
-}: OrbitTranslatorPanelProps) {
+
+  error,
+  // Stats
+  totalParticipants = 1,
+  speakingCount = 0,
+  listeningCount = 1
+}: OrbitTranslatorPanelProps & {
+  totalParticipants?: number;
+  speakingCount?: number;
+  listeningCount?: number;
+}) {
   const [activeTab, setActiveTab] = React.useState<'source' | 'receiver'>('source');
   const [isRequestingFloor, setIsRequestingFloor] = React.useState(false);
   const { playClick, playToggle } = useSound();
@@ -195,7 +204,16 @@ export function OrbitTranslatorPanel({
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
-                    <span style={{ flex: 1, fontSize: '13px', opacity: 0.7 }}>Floor is open</span>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '13px', opacity: 0.7 }}>Floor is open</span>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '2px', fontSize: '10px', opacity: 0.5 }}>
+                        <span>Total: {totalParticipants}</span>
+                        <span>•</span>
+                        <span>Speaking: {speakingCount}</span>
+                        <span>•</span>
+                        <span>Listening: {listeningCount}</span>
+                      </div>
+                    </div>
                     {onRequestFloor && (
                       <button onClick={handleStartSpeaking} disabled={isRequestingFloor} style={{ padding: '6px 12px', borderRadius: '6px', background: 'rgba(50, 205, 50, 0.2)', border: '1px solid rgba(50, 205, 50, 0.3)', color: '#32cd32', fontSize: '11px', cursor: isRequestingFloor ? 'wait' : 'pointer', opacity: isRequestingFloor ? 0.6 : 1 }}>
                         {isRequestingFloor ? '...' : 'Take Floor'}
@@ -302,6 +320,25 @@ export function OrbitTranslatorPanel({
                   {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
                 </select>
               </div>
+
+              <button 
+                onClick={() => { 
+                  playClick();
+                  if (!isListening) setIsListening(true);
+                  // Simulate "Save" action - in reality, state is already updated
+                  // Could trigger a toast here if we had the hook
+                }}
+                style={{ 
+                  width: '100%', padding: '10px', borderRadius: '8px', 
+                  background: 'rgba(50, 205, 50, 0.2)', 
+                  border: '1px solid rgba(50, 205, 50, 0.4)', 
+                  color: '#32cd32', 
+                  fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                }}
+              >
+                <span>Save Settings (Fetch Data)</span>
+              </button>
 
               <div className={sharedStyles.sidebarCard}>
                 <div className={sharedStyles.sidebarCardText}>

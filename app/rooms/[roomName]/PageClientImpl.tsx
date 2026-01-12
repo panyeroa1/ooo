@@ -41,6 +41,8 @@ import {
   isTrackReference,
   RoomAudioRenderer,
   ConnectionStateToast,
+  useLocalParticipant,
+  useRemoteParticipants,
 } from '@livekit/components-react';
 
 type ExtendedUserChoices = LocalUserChoices & {
@@ -836,22 +838,34 @@ function RoomInner(props: {
       case 'participants': return <ParticipantsPanel alias="Participants" waitingRoomEnabled={waitingRoomEnabled} onWaitingRoomToggle={setWaitingRoomEnabled} waitingList={waitingList} onAdmitParticipant={admitParticipant} onRejectParticipant={rejectParticipant} admittedIds={admittedIds} hostIdentity={hostId || undefined} />;
       case 'chat': return <ChatPanel />;
       case 'settings': return <SettingsPanel voiceFocusEnabled={voiceFocusEnabled} onVoiceFocusChange={setVoiceFocusEnabled} vadEnabled={vadEnabled} onVadChange={setVadEnabled} noiseSuppressionEnabled={noiseSuppressionEnabled} onNoiseSuppressionChange={setNoiseSuppressionEnabled} echoCancellationEnabled={echoCancellationEnabled} onEchoCancellationChange={setEchoCancellationEnabled} autoGainEnabled={autoGainEnabled} onAutoGainChange={setAutoGainEnabled} />;
-      case 'orbit': return (
-        <OrbitTranslatorPanel 
-          roomCode={roomName} userId={user?.id} isSourceSpeaker={roomState?.activeSpeaker?.userId === user?.id} currentSpeakerId={roomState?.activeSpeaker?.userId} currentSpeakerName={roomState?.activeSpeaker?.userId?.split('__')[0]} 
-          onRequestFloor={async () => roomName && user?.id ? await tryAcquireSpeaker(roomName, user.id, false) : false}
-          onReleaseFloor={async () => roomName && user?.id && await releaseSpeaker(roomName, user.id)}
-          isListening={isListening} setIsListening={setIsListening}
-          targetLanguage={targetLanguage} setTargetLanguage={setTargetLanguage}
-          incomingTranslations={translator.incomingTranslations}
-          isProcessing={translator.isProcessing}
-          error={translator.error}
-          // New props for sidebar settings
-          hearRawAudio={hearRawAudio} setHearRawAudio={setHearRawAudio}
-          orbitMicState={orbitMicState}
-          sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage}
-        />
-      );
+      case 'orbit': {
+        const { localParticipant } = useLocalParticipant();
+        const remoteParticipants = useRemoteParticipants();
+        const total = (remoteParticipants?.length || 0) + (localParticipant ? 1 : 0);
+        const speaking = (remoteParticipants?.filter(p => p.isSpeaking).length || 0) + (localParticipant?.isSpeaking ? 1 : 0);
+        const listening = total - speaking;
+
+        return (
+          <OrbitTranslatorPanel 
+            roomCode={roomName} userId={user?.id} isSourceSpeaker={roomState?.activeSpeaker?.userId === user?.id} currentSpeakerId={roomState?.activeSpeaker?.userId} currentSpeakerName={roomState?.activeSpeaker?.userId?.split('__')[0]} 
+            onRequestFloor={async () => roomName && user?.id ? await tryAcquireSpeaker(roomName, user.id, false) : false}
+            onReleaseFloor={async () => roomName && user?.id && await releaseSpeaker(roomName, user.id)}
+            isListening={isListening} setIsListening={setIsListening}
+            targetLanguage={targetLanguage} setTargetLanguage={setTargetLanguage}
+            incomingTranslations={translator.incomingTranslations}
+            isProcessing={translator.isProcessing}
+            error={translator.error}
+            // New props for sidebar settings
+            hearRawAudio={hearRawAudio} setHearRawAudio={setHearRawAudio}
+            orbitMicState={orbitMicState}
+            sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage}
+            // Stats
+            totalParticipants={total}
+            speakingCount={speaking}
+            listeningCount={listening}
+          />
+        );
+      }
       default: return null;
     }
   };
@@ -902,7 +916,15 @@ function RoomInner(props: {
           <button className={roomStyles.sidebarToggle} onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>{sidebarCollapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}</button>
           <div className={roomStyles.sidebarContent} style={{ overflowY: 'auto', overflowX: 'hidden' }}>{renderSidebarPanel()}</div>
         </div>
-        <HostCaptionOverlay words={deepgram.words} isFinal={deepgram.isFinal} isListening={deepgram.isListening} analyser={deepgram.analyser} />
+        <HostCaptionOverlay 
+          words={deepgram.words} 
+          isFinal={deepgram.isFinal} 
+          isListening={deepgram.isListening} 
+          analyser={deepgram.analyser}
+          // Show translation in green if available and user is listening to translation
+          translationText={isListening && translator.incomingTranslations.length > 0 ? translator.incomingTranslations[translator.incomingTranslations.length - 1].text : undefined}
+          isTranslationFinal={true} 
+        />
         <EburonControlBar onParticipantsToggle={() => handleSidebarPanelToggle('participants')} onChatToggle={() => handleSidebarPanelToggle('chat')} onSettingsToggle={() => handleSidebarPanelToggle('settings')} onOrbitToggle={() => handleSidebarPanelToggle('orbit')} onGridToggle={() => setIsGridView(!isGridView)} isGridView={isGridView} onTranscriptionToggle={handleTranscriptionToggle} isParticipantsOpen={!sidebarCollapsed && activeSidebarPanel === 'participants'} isChatOpen={!sidebarCollapsed && activeSidebarPanel === 'chat'} isSettingsOpen={!sidebarCollapsed && activeSidebarPanel === 'settings'} isOrbitOpen={!sidebarCollapsed && activeSidebarPanel === 'orbit'} isTranscriptionOpen={isTranscriptionEnabled} isAppMuted={isAppMuted} onAppMuteToggle={setIsAppMuted} roomState={roomState} userId={user?.id} audioCaptureOptions={audioCaptureOptions} onCaptionToggle={() => setIsTranscriptionEnabled(!isTranscriptionEnabled)} isCaptionOpen={isTranscriptionEnabled} onLanguageChange={setTargetLanguage} orbitMicState={orbitMicState} />
         <RecordingIndicator />
       </LayoutContextProvider>
