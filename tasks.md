@@ -1,5 +1,59 @@
 # Success Class Task Log
 
+Task ID: T-0057
+Title: Success Class Rebranding and Orbit Enhancements
+Status: DONE
+Owner: Miles
+
+START LOG
+
+Timestamp: 2026-01-12 19:30
+Current behavior: 
+- App named "Orbit Conference".
+- Translator auto-starts.
+- No visualizer for translation audio.
+- Limited translation history (20 items).
+- Settings in modal.
+
+Plan and scope:
+- Rename app to "Success Class".
+- Move settings to sidebar.
+- Disable auto-start for translator.
+- Add history (50 items) to sidebar.
+- Add audio visualizer ring.
+
+END LOG
+
+Timestamp: 2026-01-12 20:45
+Summary of what actually changed:
+- Implemented persistent transcription history (50 messages) in Orbit sidebar.
+- Added "Visualizer Ring" to Orb that pulses with translation TTS audio frequency.
+- Rebranded application from "Orbit Conference" to "Success Class".
+- Disabled auto-start for translator; users must now explicitly enable it.
+- Consolidated Orbit settings into the sidebar and removed the old modal.
+
+Files actually modified:
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/orbit/components/OrbitTranslatorPanel.tsx
+- lib/orbit/hooks/useOrbitTranslator.ts
+- lib/orbit/components/VisualizerRing.tsx
+- app/layout.tsx
+- app/api/agent/route.ts
+- app/docs/page.tsx
+- tasks.md
+
+- Verified "Medumba" (byv-CM) is present in the full supported languages list.
+- Validated that the language dropdown now exposes all dialects, including Medumba.
+
+How it was tested:
+- Manual verification of sidebar history rendering.
+- Visual inspection of Orb ring pulsing during TTS playback.
+- Verified metadata and text changes for rebranding.
+- Verified Medumba presence in source code.
+
+Test result:
+- PASS
+
 Task ID: T-0037
 Title: Fix Hydration Mismatch in CustomPreJoin
 Status: IN-PROGRESS
