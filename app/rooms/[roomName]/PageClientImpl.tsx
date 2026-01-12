@@ -903,7 +903,7 @@ function RoomInner(props: {
     setActiveSidebarPanel(panel);
   };
 
-  const SidebarPanel = () => {
+  const renderSidebarPanel = () => {
     if (sidebarCollapsed) return null;
     switch (activeSidebarPanel) {
       case 'participants': return <ParticipantsPanel alias="Participants" waitingRoomEnabled={waitingRoomEnabled} onWaitingRoomToggle={setWaitingRoomEnabled} waitingList={waitingList} onAdmitParticipant={admitParticipant} onRejectParticipant={rejectParticipant} admittedIds={admittedIds} hostIdentity={hostId || undefined} />;
@@ -991,7 +991,7 @@ function RoomInner(props: {
         <div className={roomStyles.videoGridContainer}><VideoGrid allowedParticipantIds={admittedIds} isGridView={isGridView} /></div>
         <div className={`${roomStyles.chatPanel} ${sidebarCollapsed ? roomStyles.chatPanelCollapsed : ''}`}>
           <button className={roomStyles.sidebarToggle} onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>{sidebarCollapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}</button>
-          <div className={roomStyles.sidebarContent} style={{ overflowY: 'auto', overflowX: 'hidden' }}><SidebarPanel /></div>
+          <div className={roomStyles.sidebarContent} style={{ overflowY: 'auto', overflowX: 'hidden' }}>{renderSidebarPanel()}</div>
         </div>
         <HostCaptionOverlay 
           words={deepgram.words} 
