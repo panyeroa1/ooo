@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/orbit/services/supabaseClient';
 import styles from '@/styles/PreJoin.module.css';
+import { LANGUAGES } from '@/lib/orbit/types';
 
 interface DeviceInfo {
   deviceId: string;
@@ -21,6 +22,7 @@ interface CustomPreJoinProps {
     videoDeviceId: string;
     audioDeviceId: string;
     audioOutputDeviceId: string;
+    targetLanguage?: string;
   }) => void;
   onError?: (error: Error) => void;
   defaults?: {
