@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Success Class Translator</title>
+  <style>
+    :root {
+      /* Colors extracted from screenshot */
+      --bg-app: #050505;
+      --bg-container: #121212;
+      --bg-card: #1E1E1E;
+      --bg-input: #2C2C2C;
+      --text-white: #FFFFFF;
+      --text-grey: #9CA3AF;
+      --accent-orange: #FFB84D; /* The specific yellow-orange from the image */
+      --accent-green: #2E7D32;
+      --accent-red: #D32F2F;
+      --border-color: #333333;
+      
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --radius-container: 16px;
+      --radius-card: 12px;
+      --radius-input: 8px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      background: var(--bg-app);
+      color: var(--text-white);
+      font-family: var(--font-family);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      overflow: hidden; /* Prevent body scroll */
+    }
+
+    /* Main Widget Container */
+    .app-container {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-container);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    @media (min-width: 500px) {
+      body { align-items: center; padding: 20px; }
+      .app-container {
+        max-width: 420px; /* Match typical mobile widget width */
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        border: none;
+      }
+    }
+
+    /* Header */
+    .header {
+      padding: 24px 20px 16px 20px;
+      flex-shrink: 0;
+    }
+    .header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .header p { margin: 4px 0 0 0; font-size: 13px; color: var(--text-grey); font-weight: 400; }
+
+    /* Tabs - 100% Mimic */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-grey);
+      padding: 16px 0;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+      transition: color 0.2s;
+    }
+    .tab-btn::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; /* Align with border */
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: transparent;
+      transition: background 0.2s;
+    }
+    .tab-btn.active {
+      color: var(--accent-orange);
+    }
+    .tab-btn.active::after {
+      background: var(--accent-orange);
+      height: 3px;
+    }
+
+    /* Scrollable Content */
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .tab-content.active { display: flex; }
+
+    /* Status Bar (Receiver Idle) */
+    .status-bar {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: #ddd;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #666;
+      transition: background 0.3s;
+    }
+    .status-dot.active { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+    .status-dot.receiving { background: var(--accent-orange); box-shadow: 0 0 8px var(--accent-orange); }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-card);
+      padding: 16px;
+      border: 1px solid #333;
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .card-title { font-weight: 600; font-size: 15px; color: #fff; }
+    .card-subtitle { font-size: 12px; color: var(--text-grey); margin-top: 4px; }
+
+    /* Inputs */
+    label.section-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-grey);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    select {
+      width: 100%;
+      background: var(--bg-input);
+      color: white;
+      border: 1px solid #3A3A3A;
+      padding: 14px;
+      border-radius: var(--radius-input);
+      font-size: 14px;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: filter 0.2s;
+    }
+    .btn:active { filter: brightness(0.9); transform: scale(0.99); }
+    .btn-green { background: #235B2D; color: #4ADE80; border: 1px solid #2E7D32; }
+    .btn-green:hover { background: #2E7D32; color: white; }
+    
+    .btn-red { background: rgba(211, 47, 47, 0.2); color: #EF5350; border: 1px solid #D32F2F; }
+    .btn-red:hover { background: #D32F2F; color: white; }
+
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #444;
+      transition: .3s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #666; } /* Grey when on in some themes, but standard is accent */
+    input:checked + .slider { background-color: #ddd; } /* Matching iOS style active */
+    input:checked + .slider:before { transform: translateX(22px); }
+
+    /* Range Sliders (Custom for that Yellow Look) */
+    .control-row {
+      margin-bottom: 16px;
+    }
+    .control-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #ccc;
+      margin-bottom: 8px;
+    }
+    .control-val { color: var(--accent-orange); font-weight: 600; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]:focus { outline: none; }
+    
+    /* The Track */
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #444;
+      border-radius: 3px;
+    }
+    
+    /* The Thumb */
+    input[type=range]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: var(--accent-orange);
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -6px; /* center on track */
+      box-shadow: 0 0 5px rgba(255, 184, 77, 0.5);
+    }
+
+    /* History Area */
+    .history-container {
+      margin-top: 10px;
+    }
+    .history-title {
+      font-size: 11px;
+      color: var(--text-grey);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .history-empty {
+      text-align: center;
+      font-style: italic;
+      color: #555;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .history-item {
+        font-size: 13px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 8px;
+        animation: fadeIn 0.3s ease;
+    }
+    .h-src { color: var(--accent-orange); font-weight: 500; margin-bottom: 2px; }
+    .h-tgt { color: #eee; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Visualizer (Hidden by default or stylized) */
+    .viz-canvas {
+      width: 100%; height: 40px;
+      background: #111; border-radius: 6px;
+      margin-top: 10px;
+      display: block;
+    }
+
+    /* Live Caption Footer */
+    .live-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(18,18,18,0.95);
+      border-top: 1px solid #333;
+      padding: 12px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--accent-orange);
+      -webkit-backdrop-filter: blur(5px);
+      backdrop-filter: blur(5px);
+      z-index: 50;
+      min-height: 50px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+  </style>
+</head>
+
+<body>
+
+<audio id="tts" autoplay></audio>
+
+<div class="app-container">
+  
+  <div class="header">
+    <h1>Success Class Translator</h1>
+    <p>Real-time Translation System</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn" onclick="switchTab('source')" id="btn-source">Source</button>
+    <button class="tab-btn active" onclick="switchTab('receiver')" id="btn-receiver">Receiver</button>
+  </div>
+
+  <!-- ================= SOURCE TAB ================= -->
+  <div id="tab-source" class="tab-content">
+    
+    <!-- Floor Status -->
+    <div class="card">
+      <div class="card-header">
+        <span class="section-label" style="margin:0;">FLOOR STATUS</span>
+        <button style="background:transparent; color:var(--accent-green); border:1px solid var(--accent-green); padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">Take Floor</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+        <span id="floorDot" class="status-dot"></span>
+        <div style="flex:1;">
+          <div id="floorText" style="font-size:15px; font-weight:500;">Floor is open</div>
+          <div style="font-size:11px; color:#666; margin-top:2px;">
+            Total: 1 • Speaking: <span id="speakingCount">0</span> • Listening: 1
+          </div>
+        </div>
+      </div>
+      <!-- Source Viz -->
+      <canvas id="sourceViz" class="viz-canvas" width="350" height="40"></canvas>
+    </div>
+
+    <!-- Source Language -->
+    <div>
+      <label class="section-label">SOURCE LANGUAGE</label>
+      <select id="srcLang" title="Source Language"></select>
+    </div>
+
+    <!-- Audio Source -->
+    <div>
+      <label class="section-label">AUDIO SOURCE</label>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button style="flex:1; background:#2C2C2C; border:1px solid var(--accent-green); color:var(--accent-green); padding:10px; border-radius:6px; font-size:13px; font-weight:600;">Microphone</button>
+        <button style="flex:1; background:transparent; border:1px solid #444; color:#666; padding:10px; border-radius:6px; font-size:13px; cursor:not-allowed;">Screen Audio</button>
+      </div>
+      <select id="micSelect" title="Audio Source Select">
+        <option value="default">Default Microphone</option>
+      </select>
+    </div>
+
+    <div style="margin-top:auto;">
+      <button id="broadcastBtn" class="btn btn-red" style="border-color: #D32F2F; color:#ff8a80; background: rgba(211, 47, 47, 0.1);">Stop Broadcasting</button>
+    </div>
+
+  </div>
+
+  <!-- ================= RECEIVER TAB (Active by default to match image) ================= -->
+  <div id="tab-receiver" class="tab-content active">
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span id="recvDot" class="status-dot"></span>
+      <span id="recvText">Receiver Idle</span>
+    </div>
+
+    <!-- Receive Toggle Card -->
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div class="card-title">Receive Translations</div>
+        <div class="card-subtitle">Enable to hear translated audio</div>
+      </div>
+      <label class="switch">
+      <input type="checkbox" id="recvToggle" checked aria-label="Enable Receive Translations">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- My Language -->
+    <div>
+      <label class="section-label">MY LANGUAGE (TRANSLATE TO)</label>
+      <select id="tgtLang" title="Target Language"></select>
+    </div>
+
+    <!-- Start Button -->
+    <button class="btn btn-green">Start Translator</button>
+
+    <!-- Original Audio Toggle -->
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div class="card-title">Hear Original Audio</div>
+        <div class="card-subtitle">Mix authentic voice with translation</div>
+      </div>
+      <label class="switch">
+      <input type="checkbox" id="originalAudioToggle" checked aria-label="Hear Original Audio">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Speaker Select (Added feature) -->
+    <div>
+      <label class="section-label">AUDIO OUTPUT</label>
+      <select id="speakerSelect" title="Audio Output Select">
+        <option value="default">Default Speaker</option>
+      </select>
+    </div>
+
+    <!-- Sonic-3 Controls -->
+    <div class="card">
+      <label class="section-label" style="margin-bottom:16px; color:#888;">SONIC-3 AI VOICE CONTROLS</label>
+      
+      <!-- Speed -->
+      <div class="control-row">
+        <div class="control-labels">
+          <span>Playback Speed</span>
+          <span class="control-val" id="speedVal">1x</span>
+        </div>
+        <input type="range" id="speedRange" min="0.5" max="2.0" step="0.1" value="1.0" title="Playback Speed">
+      </div>
+
+      <!-- Volume -->
+      <div class="control-row">
+        <div class="control-labels">
+          <span>Volume Multiplier</span>
+          <span class="control-val" id="volVal">1x</span>
+        </div>
+        <input type="range" id="volRange" min="0.0" max="1.0" step="0.1" value="1.0" title="Volume Multiplier">
+      </div>
+
+      <!-- Emotional Tone -->
+      <div style="margin-top:8px;">
+        <div class="control-labels"><span>Emotional Tone</span></div>
+        <select id="emotionSelect" style="background:#111; padding:10px;" title="Emotional Tone Select">
+          <option>Neutral (Default)</option>
+          <option>Excited</option>
+          <option>Calm</option>
+          <option>Professional</option>
+        </select>
+      </div>
+      
+      <!-- Receiver Viz -->
+      <canvas id="recvViz" class="viz-canvas" width="350" height="30" style="opacity:0.6; margin-top:16px;"></canvas>
+    </div>
+
+    <!-- History -->
+    <div class="history-container">
+      <div class="history-title">TRANSLATION HISTORY</div>
+      <div id="historyBox" class="history-list">
+        <div class="history-empty">No translations yet</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer Live Text -->
+  <div id="liveCaptionBar" class="live-bar"></div>
+
+</div>
+
+<!-- FIREBASE MODULE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCjVuc2VD5YvJE_4PBUJATmKiJzFC1ex8c",
+    authDomain: "aitek2023-8f504.firebaseapp.com",
+    databaseURL: "https://aitek2023-8f504-default-rtdb.firebaseio.com",
+    projectId: "aitek2023-8f504",
+    storageBucket: "aitek2023-8f504.appspot.com",
+    messagingSenderId: "570516064142",
+    appId: "1:570516064142:web:383ef4de00b5f48f5886df",
+    measurementId: "G-PFSD6YN1TV"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const historyRef = ref(db, 'translation_history');
+
+window.saveToFirebase = function(originalText, translatedText, srcLang, tgtLang) {
+    if (!originalText || !translatedText) return;
+    push(historyRef, {
+        source_text: originalText,
+        translated_text: translatedText,
+        source_lang: srcLang,
+        target_lang: tgtLang,
+        timestamp: serverTimestamp()
+    }).catch(err => console.error(err));
+}
+
+let initialLoad = true;
+onChildAdded(historyRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    
+    if (!initialLoad) {
+        window.uiAddToHistory(data.source_text, data.translated_text);
+        window.uiUpdateLiveBar(data.source_text);
+        if (document.getElementById('recvToggle').checked) {
+            window.enqueueTTS(data.translated_text, data.target_lang);
+        }
+    } else {
+        window.uiAddToHistory(data.source_text, data.translated_text);
+    }
+});
+setTimeout(() => { initialLoad = false; }, 2000);
+</script>
+
+<script>
+/* ======================== UI LOGIC ======================== */
+const ui = {
+  srcLang: document.getElementById("srcLang"),
+  tgtLang: document.getElementById("tgtLang"),
+  micSelect: document.getElementById("micSelect"),
+  speakerSelect: document.getElementById("speakerSelect"),
+  broadcastBtn: document.getElementById("broadcastBtn"),
+  floorDot: document.getElementById("floorDot"),
+  floorText: document.getElementById("floorText"),
+  speakingCount: document.getElementById("speakingCount"),
+  recvDot: document.getElementById("recvDot"),
+  recvText: document.getElementById("recvText"),
+  historyBox: document.getElementById("historyBox"),
+  liveCaptionBar: document.getElementById("liveCaptionBar"),
+  sourceViz: document.getElementById("sourceViz"),
+  recvViz: document.getElementById("recvViz"),
+  speedRange: document.getElementById("speedRange"),
+  volRange: document.getElementById("volRange")
+};
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('btn-' + tabId).classList.add('active');
+  
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+}
+
+// Range Slider Fill Logic (Yellow track effect)
+function updateSliderBackground(slider) {
+  const val = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+  slider.style.background = `linear-gradient(to right, #FFB84D 0%, #FFB84D ${val}%, #444 ${val}%, #444 100%)`;
+}
+
+ui.speedRange.addEventListener('input', (e) => {
+    document.getElementById('speedVal').textContent = e.target.value + 'x';
+    CARTESIA_CFG.generation_config.speed = parseFloat(e.target.value);
+    updateSliderBackground(e.target);
+});
+
+ui.volRange.addEventListener('input', (e) => {
+    document.getElementById('volVal').textContent = e.target.value + 'x';
+    CARTESIA_CFG.generation_config.volume = parseFloat(e.target.value);
+    document.getElementById('tts').volume = parseFloat(e.target.value);
+    updateSliderBackground(e.target);
+});
+
+// Init Slider backgrounds
+updateSliderBackground(ui.speedRange);
+updateSliderBackground(ui.volRange);
+
+/* ======================== HELPERS ======================== */
+window.uiAddToHistory = function(src, tgt) {
+    if (ui.historyBox.children[0] && ui.historyBox.children[0].className === 'history-empty') {
+        ui.historyBox.innerHTML = '';
+    }
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `<div class="h-src">SRC: ${src}</div><div class="h-tgt">TGT: ${tgt}</div>`;
+    ui.historyBox.prepend(item);
+    
+    // Status animation
+    ui.recvText.textContent = "Receiving...";
+    ui.recvDot.className = "status-dot receiving";
+    setTimeout(() => {
+       ui.recvText.textContent = "Receiver Idle";
+       ui.recvDot.className = "status-dot"; // Idle state is grey in image? Or active?
+       // If enabled, active green
+       if(document.getElementById('recvToggle').checked) ui.recvDot.className = "status-dot active";
+    }, 2000);
+};
+
+window.uiUpdateLiveBar = function(text) {
+    ui.liveCaptionBar.textContent = text || "";
+};
+
+/* ======================== DEVICE MGMT ======================== */
+async function populateDevices() {
+    try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        
+        ui.micSelect.innerHTML = '';
+        ui.speakerSelect.innerHTML = '<option value="default">Default Speaker</option>';
+
+        devices.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.text = d.label || `${d.kind} ${d.deviceId.slice(0,4)}`;
+            if (d.kind === 'audioinput') ui.micSelect.appendChild(opt);
+            if (d.kind === 'audiooutput') ui.speakerSelect.appendChild(opt);
+        });
+    } catch(e) { console.error(e); }
+}
+
+ui.speakerSelect.addEventListener('change', async () => {
+    const tts = document.getElementById('tts');
+    if (typeof tts.setSinkId === 'function') {
+        await tts.setSinkId(ui.speakerSelect.value);
+    }
+});
+
+/* ======================== VISUALIZERS ======================== */
+let inputCtx, inputAnalyser, recvCtx, recvAnalyser, recvSource;
+
+function drawViz(canvas, analyser, color) {
+    if(!analyser) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    
+    function render() {
+        if(!analyser) { ctx.clearRect(0,0,w,h); return; }
+        requestAnimationFrame(render);
+        analyser.getByteFrequencyData(data);
+        ctx.clearRect(0,0,w,h);
+        
+        const barW = (w / data.length) * 2.5;
+        let x = 0;
+        for(let i=0; i<data.length; i++) {
+            const barH = (data[i]/255)*h;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, h-barH, barW, barH);
+            x += barW + 1;
+        }
+    }
+    render();
+}
+
+function initRecvViz() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    recvCtx = new AC();
+    recvAnalyser = recvCtx.createAnalyser();
+    recvAnalyser.fftSize = 64;
+    const tts = document.getElementById('tts');
+    recvSource = recvCtx.createMediaElementSource(tts);
+    recvSource.connect(recvAnalyser);
+    recvAnalyser.connect(recvCtx.destination);
+    drawViz(ui.recvViz, recvAnalyser, '#FFB84D');
+}
+
+async function initSourceViz(stream) {
+    if(inputCtx) inputCtx.close();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    inputCtx = new AC();
+    inputAnalyser = inputCtx.createAnalyser();
+    inputAnalyser.fftSize = 64;
+    const src = inputCtx.createMediaStreamSource(stream);
+    src.connect(inputAnalyser);
+    drawViz(ui.sourceViz, inputAnalyser, '#2E7D32');
+}
+
+/* ======================== LOGIC ======================== */
+const CARTESIA_KEY = "sk_car_JmdGRhBt1ocwhqmrxy2gaa";
+const CARTESIA_CFG = {
+  endpoint: "https://api.cartesia.ai/tts/bytes",
+  version: "2025-04-16",
+  model_id: "sonic-3-latest",
+  voice_id: "9c7e6604-52c6-424a-9f9f-2c4ad89f3bb9",
+  output_primary: { container: "wav", encoding: "pcm_f32le", sample_rate: 44100 },
+  output_fallback:{ container: "wav", encoding: "pcm_s16le", sample_rate: 44100 },
+  generation_config: { speed: 1.0, volume: 1.0 }
+};
+
+let ttsQueue = [];
+let ttsBusy = false;
+const ttsAudio = document.getElementById("tts");
+
+window.enqueueTTS = function(text, lang) {
+    const parts = text.match(/[^.!?]+[.!?]*/g) || [text];
+    parts.forEach(p => ttsQueue.push({ text: p, lang }));
+    processTTS();
+}
+
+async function processTTS() {
+    if (ttsBusy || !ttsQueue.length) return;
+    ttsBusy = true;
+    
+    // Ducking
+    if(document.getElementById('originalAudioToggle').checked) {
+        // Here we ideally lower mic volume, but input volume isn't controllable via JS easily.
+        // We simulate separation by ensuring output goes to speaker and mic handles input.
+    }
+
+    if(recvCtx && recvCtx.state==='suspended') recvCtx.resume();
+
+    const { text, lang } = ttsQueue.shift();
+    try {
+        const res = await fetch(CARTESIA_CFG.endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-API-Key": CARTESIA_KEY, "Cartesia-Version": CARTESIA_CFG.version },
+            body: JSON.stringify({
+                model_id: CARTESIA_CFG.model_id,
+                transcript: text,
+                voice: { mode: "id", id: "9c7e6604-52c6-424a-9f9f-2c4ad89f3bb9" },
+                output_format: CARTESIA_CFG.output_primary,
+                generation_config: CARTESIA_CFG.generation_config
+            })
+        });
+        const blob = await res.blob();
+        ttsAudio.src = URL.createObjectURL(blob);
+        await ttsAudio.play();
+        await new Promise(r => { ttsAudio.onended = r; setTimeout(r, 10000); });
+    } catch(e) { console.error(e); }
+    
+    ttsBusy = false;
+    processTTS();
+}
+
+// STT
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizer, listening = false;
+
+async function startBroadcasting() {
+    if (!SpeechRecognition) return alert("Browser not supported");
+    if (listening) return stopBroadcasting();
+
+    try {
+        const deviceId = ui.micSelect.value;
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } } 
+        });
+        initSourceViz(stream);
+    } catch(e) { console.error("Mic error", e); return; }
+
+    recognizer = new SpeechRecognition();
+    recognizer.continuous = true;
+    recognizer.interimResults = true;
+    recognizer.lang = ui.srcLang.value;
+
+    recognizer.onstart = () => {
+        listening = true;
+        ui.floorText.textContent = "On Air";
+        ui.floorDot.className = "status-dot active";
+        ui.broadcastBtn.textContent = "Stop Broadcasting";
+        ui.broadcastBtn.className = "btn btn-red";
+        ui.broadcastBtn.style.background = "rgba(211, 47, 47, 0.2)";
+        ui.liveCaptionBar.textContent = "Listening...";
+    };
+    recognizer.onend = () => {
+        if(listening) recognizer.start();
+        else stopBroadcasting();
+    };
+    recognizer.onresult = async (e) => {
+        let interim = "";
+        for(let i=e.resultIndex; i<e.results.length; i++) {
+            const r = e.results[i];
+            if(r.isFinal) {
+                const txt = r[0].transcript.trim();
+                if(txt) {
+                    // Translate
+                    try {
+                        const tl = ui.tgtLang.value.split('-')[0];
+                        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(txt)}`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        const trans = data[0].map(x=>x[0]).join("");
+                        if(window.saveToFirebase) window.saveToFirebase(txt, trans, "auto", tl);
+                    } catch(err) { console.error(err); }
+                }
+            } else interim += r[0].transcript;
+        }
+        ui.liveCaptionBar.textContent = interim || (listening ? "Listening..." : "");
+    };
+    recognizer.start();
+}
+
+function stopBroadcasting() {
+    listening = false;
+    if(recognizer) recognizer.stop();
+    ui.floorText.textContent = "Floor is closed";
+    ui.floorDot.className = "status-dot";
+    ui.broadcastBtn.textContent = "Start Broadcasting";
+    ui.broadcastBtn.className = "btn btn-green";
+    ui.broadcastBtn.style.background = "#235B2D";
+    ui.liveCaptionBar.textContent = "";
+    if(inputCtx) inputCtx.close();
+}
+
+ui.broadcastBtn.addEventListener('click', startBroadcasting);
+
+/* ======================== LANGUAGES ======================== */
+const LANGUAGES = [
+  { code: "en-US", name: "English (United States)" },
+  { code: "nl-BE", name: "Dutch (Belgium/Flemish)" }, // Priority Request
+  { code: "nl-NL", name: "Dutch (Netherlands)" },
+  { code: "es-ES", name: "Spanish (Spain)" },
+  { code: "fr-FR", name: "French (France)" },
+  { code: "de-DE", name: "German (Germany)" },
+  { code: "it-IT", name: "Italian (Italy)" },
+  { code: "pt-BR", name: "Portuguese (Brazil)" },
+  { code: "zh-CN", name: "Chinese (Simplified)" },
+  { code: "ar-SA", name: "Arabic (Saudi Arabia)" },
+  { code: "hi-IN", name: "Hindi (India)" },
+  { code: "ja-JP", name: "Japanese" },
+  { code: "ko-KR", name: "Korean" },
+  { code: "ru-RU", name: "Russian" },
+  { code: "tr-TR", name: "Turkish" },
+  { code: "pl-PL", name: "Polish" },
+  { code: "th-TH", name: "Thai" },
+  { code: "vi-VN", name: "Vietnamese" },
+  { code: "id-ID", name: "Indonesian" },
+  { code: "ms-MY", name: "Malay" },
+  { code: "fil-PH", name: "Filipino" },
+  { code: "sw-TZ", name: "Swahili" },
+  { code: "zu-ZA", name: "Zulu" },
+  { code: "xh-ZA", name: "Xhosa" },
+  { code: "ha-NG", name: "Hausa" },
+  { code: "yo-NG", name: "Yoruba" },
+  { code: "ig-NG", name: "Igbo" },
+  { code: "byv",   name: "Medumba (Cameroon)" }
+];
+
+function initLanguages() {
+    const opts = LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('');
+    ui.srcLang.innerHTML = opts;
+    ui.tgtLang.innerHTML = opts;
+    ui.srcLang.value = "en-US";
+    ui.tgtLang.value = "nl-BE";
+}
+
+initLanguages();
+populateDevices();
+initRecvViz();
+
+</script>
+</body>
+</html>

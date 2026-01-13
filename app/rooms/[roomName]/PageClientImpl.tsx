@@ -14,9 +14,11 @@ import { ParticipantsPanel } from '@/lib/ParticipantsPanel';
 import { OrbitTranslatorPanel } from '@/lib/orbit/components/OrbitTranslatorPanel';
 import { LiveCaptions } from '@/lib/LiveCaptions';
 import { CustomPreJoin } from '@/lib/CustomPreJoin';
+import { useInkLive } from '@/lib/orbit/hooks/useInkLive';
 import { useDeepgramLive } from '@/lib/orbit/hooks/useDeepgramLive';
+import { useWebSpeech } from '@/lib/orbit/hooks/useWebSpeech';
 import { ensureRoomState } from '@/lib/orbit/services/orbitService';
-import { LANGUAGES, RoomState } from '@/lib/orbit/types';
+import { LANGUAGES, RoomState, STTEngine, TranslationEngine } from '@/lib/orbit/types';
 import { useOrbitTranslator } from '@/lib/orbit/hooks/useOrbitTranslator';
 import { VisualizerRing } from '@/lib/orbit/components/VisualizerRing';
 
@@ -90,14 +92,14 @@ const ChevronLeftIcon = () => (
 );
 
 const TranslatorLogo = () => (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-      <path d="M5 8l6 6" />
-      <path d="M4 14l6-6 2-3" />
-      <path d="M2 5h12" />
-      <path d="M7 2h1" />
-      <path d="M22 22l-5-10-5 10" />
-      <path d="M14 18h6" />
-    </svg>
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
+    <path d="M5 8l6 6" />
+    <path d="M4 14l6-6 2-3" />
+    <path d="M2 5h12" />
+    <path d="M7 2h1" />
+    <path d="M22 22l-5-10-5 10" />
+    <path d="M14 18h6" />
+  </svg>
 );
 
 type SidebarPanel = 'participants' | 'chat' | 'settings' | 'orbit';
@@ -373,14 +375,14 @@ export function PageClientImpl(props: {
     if (typeof window === 'undefined') return;
     const shouldAutoJoin = sessionStorage.getItem(`lk_autojoin_${props.roomName}`);
     if (shouldAutoJoin === 'true' && userChoices.username) {
-       setPreJoinChoices({
-         username: userChoices.username,
-         videoEnabled: userChoices.videoEnabled ?? true,
-         audioEnabled: userChoices.audioEnabled ?? true,
-         videoDeviceId: userChoices.videoDeviceId ?? 'default',
-         audioDeviceId: userChoices.audioDeviceId ?? 'default',
-         targetLanguage: 'West Flemish (Belgium)', // Default fallback for auto-join
-       });
+      setPreJoinChoices({
+        username: userChoices.username,
+        videoEnabled: userChoices.videoEnabled ?? true,
+        audioEnabled: userChoices.audioEnabled ?? true,
+        videoDeviceId: userChoices.videoDeviceId ?? 'default',
+        audioDeviceId: userChoices.audioDeviceId ?? 'default',
+        targetLanguage: 'West Flemish (Belgium)', // Default fallback for auto-join
+      });
     }
   }, [props.roomName, userChoices]);
 
@@ -457,9 +459,9 @@ export function PageClientImpl(props: {
               videoDeviceId: preJoinDefaults.videoDeviceId,
               audioDeviceId: preJoinDefaults.audioDeviceId,
             }}
-          onSubmit={handlePreJoinSubmit}
-          onError={handlePreJoinError}
-        />
+            onSubmit={handlePreJoinSubmit}
+            onError={handlePreJoinError}
+          />
         </div>
       ) : (
         <VideoConferenceComponent
@@ -488,13 +490,13 @@ function VideoConferenceComponent(props: {
   const { roomName } = useParams<{ roomName: string }>();
   const { user } = useAuth();
 
-  const [roomState, setRoomState] = React.useState<RoomState>({ 
-    hostId: null, 
-    activeSpeaker: null, 
-    isFloorLocked: false, 
+  const [roomState, setRoomState] = React.useState<RoomState>({
+    hostId: null,
+    activeSpeaker: null,
+    isFloorLocked: false,
     conversationMode: 'manual',
-    raiseHandQueue: [], 
-    lockVersion: 0 
+    raiseHandQueue: [],
+    lockVersion: 0
   });
   const [sourceLanguage, setSourceLanguage] = React.useState('multi');
   const [targetLanguage, setTargetLanguage] = React.useState(props.userChoices.targetLanguage || 'West Flemish (Belgium)');
@@ -533,9 +535,9 @@ function VideoConferenceComponent(props: {
 
   return (
     <RoomContext.Provider value={lkRoom}>
-      <RoomInner 
-        {...props} 
-        lkRoom={lkRoom} 
+      <RoomInner
+        {...props}
+        lkRoom={lkRoom}
         roomState={roomState}
         setRoomState={setRoomState}
         roomName={roomName}
@@ -577,13 +579,13 @@ function RoomInner(props: {
   e2eePassphrase?: string;
   keyProvider: ExternalE2EEKeyProvider;
 }) {
-  const { 
-    lkRoom, roomName, user, roomState, setRoomState, 
+  const {
+    lkRoom, roomName, user, roomState, setRoomState,
     roomId, setRoomId, hostId, setHostId,
     sourceLanguage, setSourceLanguage, targetLanguage, setTargetLanguage,
     e2eeEnabled, e2eePassphrase, keyProvider
   } = props;
-  
+
   const [activeSidebarPanel, setActiveSidebarPanel] = React.useState<SidebarPanel>('participants');
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [voiceFocusEnabled, setVoiceFocusEnabled] = React.useState(true);
@@ -605,13 +607,7 @@ function RoomInner(props: {
     ? { left: orbPosition.x, top: orbPosition.y, right: 'auto', bottom: 'auto' }
     : undefined;
 
-  const [isListening, setIsListening] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('orbit_is_listening');
-      return saved !== null ? saved === 'true' : false;
-    }
-    return false;
-  });
+  const [isListening, setIsListening] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -622,15 +618,15 @@ function RoomInner(props: {
   // Sync translation config to room metadata for agents
   React.useEffect(() => {
     if (localParticipant.permissions?.canPublish /* only if host/speaker to avoid conflicts */ || hostId === user?.id) {
-       const metadata = {
-         source_language: sourceLanguage,
-         target_language: targetLanguage,
-         updated_at: Date.now()
-       };
-       lkRoom.localParticipant.setMetadata(JSON.stringify({ 
-         ...JSON.parse(lkRoom.localParticipant.metadata || '{}'),
-         translation_config: metadata 
-       }));
+      const metadata = {
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        updated_at: Date.now()
+      };
+      lkRoom.localParticipant.setMetadata(JSON.stringify({
+        ...JSON.parse(lkRoom.localParticipant.metadata || '{}'),
+        translation_config: metadata
+      }));
     }
   }, [sourceLanguage, targetLanguage, lkRoom, hostId, user?.id]);
   const [hearRawAudio, setHearRawAudio] = React.useState(false);
@@ -645,13 +641,25 @@ function RoomInner(props: {
   }, [remoteParticipants]);
 
   const { activeSpeakerId: floorSpeakerId, isFloorHolder, claimFloor, grantFloor } = useMeetingFloor(roomName || '', user?.id || '');
-  const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(true);
+  const [isTranscriptionEnabled, setIsTranscriptionEnabled] = React.useState(false);
 
   const { lastClickTime } = React.useMemo(() => ({
     lastClickTime: { current: null as number | null }
   }), []);
 
-  const deepgram = useDeepgramLive({ model: 'nova-3', language: sourceLanguage });
+  const [sttEngine, setSttEngine] = React.useState<STTEngine>('eburon-ink');
+  const [translationEngine, setTranslationEngine] = React.useState<TranslationEngine>('eburon-gemini');
+
+  const inkSTT = useInkLive({ model: 'ink-whisper', language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
+  const deepgramSTT = useDeepgramLive({ model: 'nova-2', language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
+  const webSpeechSTT = useWebSpeech({ language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
+
+  const activeSTT = React.useMemo(() => {
+    if (sttEngine === 'eburon-webspeech') return webSpeechSTT;
+    if (sttEngine === 'eburon-nova') return deepgramSTT;
+    return inkSTT;
+  }, [sttEngine, inkSTT, deepgramSTT, webSpeechSTT]);
+
   const orbitMicState = useOrbitMic({ language: sourceLanguage, passive: true });
   const translator = useOrbitTranslator({
     targetLanguage,
@@ -660,51 +668,64 @@ function RoomInner(props: {
     isSourceSpeaker: roomState?.activeSpeaker?.userId === user?.id
   });
 
-  // Start/Stop Deepgram based on translation/transcription needs OR Broadcasting
+  // Start/Stop STT based on translation/transcription needs OR Broadcasting
   React.useEffect(() => {
     const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
+
+    // Stop background STT if the Success Class (Orbit) panel is active, 
+    // as the iframe handles its own transcription.
+    if (activeSidebarPanel === 'orbit') {
+      if (inkSTT.isListening) inkSTT.stop();
+      if (deepgramSTT.isListening) deepgramSTT.stop();
+      if (webSpeechSTT.isListening) webSpeechSTT.stop();
+      return;
+    }
+
     if (isListening || isTranscriptionEnabled || orbitMicState.isRecording) {
-      if (!deepgram.isListening) {
-        deepgram.start(activeDeviceId);
+      if (!activeSTT.isListening) {
+        activeSTT.start(activeDeviceId);
       }
     } else {
-      if (deepgram.isListening) {
-        deepgram.stop();
+      if (activeSTT.isListening) {
+        activeSTT.stop();
       }
     }
   }, [
-    isListening, 
-    isTranscriptionEnabled, 
-    orbitMicState.isRecording, 
-    deepgram.isListening, 
-    deepgram.start, 
-    deepgram.stop, 
-    lkRoom, 
-    props.userChoices.audioDeviceId
+    isListening,
+    isTranscriptionEnabled,
+    orbitMicState.isRecording,
+    sttEngine,
+    activeSTT,
+    inkSTT,
+    deepgramSTT,
+    webSpeechSTT,
+    lkRoom,
+    props.userChoices.audioDeviceId,
+    activeSidebarPanel
   ]);
 
   // Feed transcription into translator AND update RTDB
   React.useEffect(() => {
     // 1. Translation: Only send if we are BROADCASTING AND we have the floor
-    if (orbitMicState.isRecording && roomState?.activeSpeaker?.userId === user?.id && deepgram.isFinal && deepgram.transcript?.trim()) {
-      translator.sendTranslation(deepgram.transcript);
+    if (orbitMicState.isRecording && roomState?.activeSpeaker?.userId === user?.id && activeSTT.isFinal && activeSTT.transcript?.trim()) {
+      translator.sendTranslation(activeSTT.transcript);
     }
-    
+
     // 2. RTDB Sync: Update transcription in RTDB if broadcasting
-    if (orbitMicState.isRecording && deepgram.transcript?.trim()) {
+    if (orbitMicState.isRecording && activeSTT.transcript?.trim()) {
       import('@/lib/orbit/services/firebase').then(({ rtdb }) => {
         import('firebase/database').then(({ ref, update, serverTimestamp }) => {
           const orbitRef = ref(rtdb, 'orbit/live_state');
           update(orbitRef, {
-            transcript: deepgram.transcript,
-            is_final: deepgram.isFinal,
+            transcript: activeSTT.transcript,
+            is_final: activeSTT.isFinal,
             updatedAt: serverTimestamp(),
             brand: "Orbit"
           }).catch(e => console.error("Orbit RTDB Update Failed", e));
         });
       });
     }
-  }, [orbitMicState.isRecording, roomState?.activeSpeaker?.userId, user?.id, deepgram.isFinal, deepgram.transcript, translator]);
+  }, [orbitMicState.isRecording, roomState?.activeSpeaker?.userId, user?.id, activeSTT.isFinal, activeSTT.transcript, translator]);
 
   const audioCaptureOptions = React.useMemo<AudioCaptureOptions>(() => {
     const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
@@ -739,7 +760,7 @@ function RoomInner(props: {
     let animationId: number;
     const updateViz = () => {
       if (!orbRef.current) return;
-      
+
       // Outgoing (Blue) - Local Mic
       let outLevel = 0;
       if (orbitMicState.isRecording && orbitMicState.analyser) {
@@ -795,20 +816,20 @@ function RoomInner(props: {
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0 || (event.target as HTMLElement)?.closest('[data-orb-settings="true"]')) return;
-      
+
       // Check for double click
       const now = Date.now();
       if (lastClickTime.current && now - lastClickTime.current < 300) {
         // Double click detected
         orbitMicState.toggle();
         if (!orbitMicState.isRecording) {
-            // Starting: Mute app
-            setIsAppMuted(true);
-            playToggle(true);
+          // Starting: Mute app
+          setIsAppMuted(true);
+          playToggle(true);
         } else {
-            // Stopping: Unmute app
-            setIsAppMuted(false);
-            playToggle(false);
+          // Stopping: Unmute app
+          setIsAppMuted(false);
+          playToggle(false);
         }
         lastClickTime.current = null;
         return;
@@ -831,7 +852,7 @@ function RoomInner(props: {
     const endDrag = (event: PointerEvent) => {
       if (!dragging) return;
       dragging = false; setIsOrbDragging(false);
-      try { orb.releasePointerCapture(event.pointerId); } catch (_) {}
+      try { orb.releasePointerCapture(event.pointerId); } catch (_) { }
     };
 
     const onResize = () => {
@@ -934,49 +955,20 @@ function RoomInner(props: {
       case 'chat': return <ChatPanel />;
       case 'settings': return <SettingsPanel voiceFocusEnabled={voiceFocusEnabled} onVoiceFocusChange={setVoiceFocusEnabled} vadEnabled={vadEnabled} onVadChange={setVadEnabled} noiseSuppressionEnabled={noiseSuppressionEnabled} onNoiseSuppressionChange={setNoiseSuppressionEnabled} echoCancellationEnabled={echoCancellationEnabled} onEchoCancellationChange={setEchoCancellationEnabled} autoGainEnabled={autoGainEnabled} onAutoGainChange={setAutoGainEnabled} />;
       case 'orbit': {
-        const total = (remoteParticipants?.length || 0) + (localParticipant ? 1 : 0);
-        const speaking = (remoteParticipants?.filter(p => p.isSpeaking).length || 0) + (localParticipant?.isSpeaking ? 1 : 0);
-        const listening = total - speaking;
-
         return (
-          <OrbitTranslatorPanel 
-            roomCode={roomName} userId={user?.id} isSourceSpeaker={roomState?.activeSpeaker?.userId === user?.id} currentSpeakerId={roomState?.activeSpeaker?.userId} currentSpeakerName={roomState?.activeSpeaker?.userId?.split('__')[0]} 
-            onRequestFloor={async () => roomName && user?.id ? await tryAcquireSpeaker(roomName, user.id, false) : false}
-            onReleaseFloor={async () => roomName && user?.id && await releaseSpeaker(roomName, user.id)}
-            isListening={isListening} setIsListening={setIsListening}
-            targetLanguage={targetLanguage} setTargetLanguage={setTargetLanguage}
-            incomingTranslations={translator.incomingTranslations}
-            isProcessing={translator.isProcessing}
-            error={translator.error}
-            aiAgentOnline={aiAgentOnline}
-            // New props for sidebar settings
-            hearRawAudio={hearRawAudio} setHearRawAudio={setHearRawAudio}
-            // UNIFIED STT: Override orbitMicState with deepgram data
-            orbitMicState={{
-                ...orbitMicState,
-                transcript: deepgram.transcript,
-                isFinal: deepgram.isFinal,
-                isRecording: orbitMicState.isRecording, // Keep control flow
-                analyser: deepgram.analyser // Use accurate visualizer
-            }}
-            sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage}
-            // Voice Settings Sync
-            onVoiceSettingsChange={(settings) => {
-                if (localParticipant) {
-                    try {
-                        const currentMetadata = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
-                        const newMetadata = { ...currentMetadata, voice_settings: settings };
-                        localParticipant.setMetadata(JSON.stringify(newMetadata));
-                    } catch (e) {
-                        console.error("Failed to sync voice settings metadata", e);
-                    }
-                }
-            }}
-            // Stats
-            totalParticipants={total}
-            speakingCount={speaking}
-            listeningCount={listening}
-          />
+          <div style={{ width: '100%', height: '100%', background: '#121212', position: 'relative', overflow: 'hidden' }}>
+            <iframe
+              src="/success-class.html"
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                background: 'transparent'
+              }}
+              title="Success Class Translator"
+              allow="microphone; clipboard-write; autoplay"
+            />
+          </div>
         );
       }
       default: return null;
@@ -1029,14 +1021,14 @@ function RoomInner(props: {
           <button className={roomStyles.sidebarToggle} onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>{sidebarCollapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}</button>
           <div className={roomStyles.sidebarContent} style={{ overflowY: 'auto', overflowX: 'hidden' }}>{renderSidebarPanel()}</div>
         </div>
-        <HostCaptionOverlay 
-          words={deepgram.words} 
-          isFinal={deepgram.isFinal} 
-          isListening={deepgram.isListening} 
-          analyser={deepgram.analyser}
+        <HostCaptionOverlay
+          words={activeSTT.words}
+          isFinal={activeSTT.isFinal}
+          isListening={activeSTT.isListening}
+          analyser={activeSTT.analyser}
           // Show translation in green if available and user is listening to translation
           translationText={isListening && translator.incomingTranslations.length > 0 ? translator.incomingTranslations[translator.incomingTranslations.length - 1].text : undefined}
-          isTranslationFinal={true} 
+          isTranslationFinal={true}
         />
         <EburonControlBar onParticipantsToggle={() => handleSidebarPanelToggle('participants')} onChatToggle={() => handleSidebarPanelToggle('chat')} onSettingsToggle={() => handleSidebarPanelToggle('settings')} onOrbitToggle={() => handleSidebarPanelToggle('orbit')} onGridToggle={() => setIsGridView(!isGridView)} isGridView={isGridView} onTranscriptionToggle={handleTranscriptionToggle} isParticipantsOpen={!sidebarCollapsed && activeSidebarPanel === 'participants'} isChatOpen={!sidebarCollapsed && activeSidebarPanel === 'chat'} isSettingsOpen={!sidebarCollapsed && activeSidebarPanel === 'settings'} isOrbitOpen={!sidebarCollapsed && activeSidebarPanel === 'orbit'} isTranscriptionOpen={isTranscriptionEnabled} isAppMuted={isAppMuted} onAppMuteToggle={setIsAppMuted} roomState={roomState} userId={user?.id} audioCaptureOptions={audioCaptureOptions} onCaptionToggle={() => setIsTranscriptionEnabled(!isTranscriptionEnabled)} isCaptionOpen={isTranscriptionEnabled} onLanguageChange={setTargetLanguage} orbitMicState={orbitMicState} />
         <RecordingIndicator />

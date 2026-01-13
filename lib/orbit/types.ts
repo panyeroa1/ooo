@@ -12,6 +12,21 @@ export type AudioSource = "mic" | "system";
 
 export type EmotionType = "neutral" | "joy" | "sadness" | "anger" | "fear" | "calm" | "excited";
 
+export type STTEngine = 'eburon-ink' | 'eburon-nova' | 'eburon-webspeech';
+
+export const STT_ENGINES = [
+  { id: 'eburon-ink', name: 'Eburon Ink (Cartesia)', icon: '✨' },
+  { id: 'eburon-nova', name: 'Eburon Nova (Deepgram)', icon: '🚀' },
+  { id: 'eburon-webspeech', name: 'Eburon Voice (Web Speech)', icon: '🌐' },
+];
+
+export type TranslationEngine = 'eburon-gemini' | 'eburon-google';
+
+export const TRANSLATION_ENGINES = [
+  { id: 'eburon-gemini', name: 'Eburon Neural (Gemini)', icon: '🧠' },
+  { id: 'eburon-google', name: 'Eburon Standard (Google)', icon: '🌏' },
+];
+
 export const EMOTION_COLORS: Record<EmotionType, string> = {
   neutral: 'text-white/60',
   joy: 'text-emerald-400',
@@ -371,7 +386,7 @@ export const LANGUAGES: Language[] = [
   { code: 'lg-UG', name: 'Luganda', flag: '🇺🇬' },
   { code: 'ki-KE', name: 'Kikuyu', flag: '🇰🇪' },
   { code: 'bem-ZM', name: 'Bemba', flag: '🇿🇲' },
-  
+
   // --- Asia / Other ---
   { code: 'hmn-CN', name: 'Hmong', flag: '🇨🇳' },
   { code: 'rom', name: 'Romani', flag: '🌍' },
@@ -381,7 +396,7 @@ export const LANGUAGES: Language[] = [
   { code: 'eo', name: 'Esperanto', flag: '🌐' },
   { code: 'la', name: 'Latin', flag: '🌐' },
 
-// --- JW.org Extended Languages ---
+  // --- JW.org Extended Languages ---
   { code: 'en', name: 'English', flag: '🌍' },
   { code: 'ar', name: 'العربية', flag: '🌍' },
   { code: 'el', name: 'Ελληνική', flag: '🌍' },

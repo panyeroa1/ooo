@@ -136,8 +136,8 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      const model = options.model || 'nova-3';
-      const language = currentLanguage || 'en';
+      const model = options.model || 'nova-2';
+      const language = currentLanguage || 'multi';
       
       const params = new URLSearchParams({
         model,
