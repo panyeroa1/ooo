@@ -30,14 +30,14 @@ interface UseOrbitTranslatorReturn {
   // Outbound
   sendTranslation: (text: string) => Promise<void>;
   sendTranscript: (text: string, sourceLanguage?: string) => Promise<void>;
-  
+
   // Inbound
   incomingTranslations: Array<{ participantId: string; text: string; timestamp: number }>;
-  
+
   // State
   isProcessing: boolean;
   error: string | null;
-  
+
   // Audio control
   muteRawAudio: (participantId: string) => void;
   unmuteRawAudio: (participantId: string) => void;
@@ -55,12 +55,12 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [incomingTranslations, setIncomingTranslations] = useState<Array<{ participantId: string; text: string; timestamp: number }>>([]);
   const [mutedParticipants, setMutedParticipants] = useState<Set<string>>(new Set());
-  
+
   const ttsQueueRef = useRef<Array<{ text: string; participantId: string }>>([]);
   const isSpeakingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -105,7 +105,7 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     }
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current.close().catch(() => { });
       }
       if (audioRef.current) {
         audioRef.current.pause();
@@ -117,7 +117,7 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
   // Resume AudioContext on user interaction if needed (browser autoplay policy)
   const resumeAudioContext = useCallback(() => {
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume().catch(() => {});
+      audioContextRef.current.resume().catch(() => { });
     }
   }, []);
 
@@ -136,7 +136,7 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     baselineDuckStoreRef.current.forEach((originalVol, el) => {
       try {
         el.volume = originalVol;
-      } catch (_) {}
+      } catch (_) { }
     });
     baselineDuckStoreRef.current.clear();
   }, []);
@@ -201,7 +201,7 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     duckStoreRef.current.forEach((originalVol, el) => {
       try {
         el.volume = originalVol;
-      } catch (_) {}
+      } catch (_) { }
     });
     duckStoreRef.current.clear();
   }, []);
@@ -209,49 +209,67 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
   // Process TTS queue sequentially with ducking
   const processTTSQueue = useCallback(async () => {
     if (isSpeakingRef.current || ttsQueueRef.current.length === 0) return;
-    
+
     isSpeakingRef.current = true;
     resumeAudioContext(); // Ensure AudioContext is running
     const next = ttsQueueRef.current.shift();
-    
+
     if (next && audioRef.current) {
       duckOtherMedia(); // Duck before playing
-      try {
-        const response = await fetch('/api/orbit/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: next.text })
-        });
-        
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          audioRef.current.src = url;
-          
-          await new Promise<void>((resolve) => {
-            if (!audioRef.current) {
-              resolve();
-              return;
-            }
-            audioRef.current.onended = () => {
-              URL.revokeObjectURL(url);
-              resolve();
-            };
-            audioRef.current.onerror = () => {
-              URL.revokeObjectURL(url);
-              resolve();
-            };
-            audioRef.current.play().catch(() => resolve());
+
+      let attempts = 0;
+      let success = false;
+      const MAX_TTS_RETRIES = 3;
+
+      while (attempts < MAX_TTS_RETRIES && !success) {
+        try {
+          attempts++;
+          const response = await fetch('/api/orbit/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: next.text })
           });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            audioRef.current.src = url;
+
+            await new Promise<void>((resolve) => {
+              if (!audioRef.current) {
+                resolve();
+                return;
+              }
+              audioRef.current.onended = () => {
+                URL.revokeObjectURL(url);
+                resolve();
+              };
+              audioRef.current.onerror = () => {
+                URL.revokeObjectURL(url);
+                resolve();
+              };
+              audioRef.current.play().catch(() => resolve());
+            });
+            success = true;
+          } else {
+            console.warn(`[Orbit] TTS Fetch failed (Attempt ${attempts}): ${response.status}`);
+            if (attempts < MAX_TTS_RETRIES) await new Promise(r => setTimeout(r, 500));
+          }
+        } catch (e) {
+          console.error(`[Orbit] TTS synthesis error (Attempt ${attempts}):`, e);
+          if (attempts < MAX_TTS_RETRIES) await new Promise(r => setTimeout(r, 500));
         }
-      } catch (e) {
-        console.error('[Orbit] TTS synthesis failed:', e);
       }
+
+      if (!success) {
+        console.error(`[Orbit] Failed to synthesize TTS for text: "${next.text.substring(0, 20)}..." after ${MAX_TTS_RETRIES} attempts.`);
+      }
+
       restoreOtherMedia(); // Restore after playing
     }
-    
+
     isSpeakingRef.current = false;
-    
+
     // Process next item in queue
     if (ttsQueueRef.current.length > 0) {
       processTTSQueue();
@@ -301,10 +319,10 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
   const sendTranslation = useCallback(async (text: string) => {
     if (!localParticipant || !text.trim()) return;
     if (!options.isSourceSpeaker) return; // Only source speaker can send translations
-    
+
     setIsProcessing(true);
     setError(null);
-    
+
     try {
       // Translate the text
       const translateResponse = await fetch('/api/orbit/translate', {
@@ -312,13 +330,13 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, targetLang: options.targetLanguage })
       });
-      
+
       if (!translateResponse.ok) {
         throw new Error('Translation failed');
       }
-      
+
       const { translation } = await translateResponse.json();
-      
+
       // Broadcast via Data Channel
       const message: TranslationMessage = {
         type: 'orbit_translation',
@@ -326,10 +344,10 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
         targetLanguage: options.targetLanguage,
         timestamp: Date.now()
       };
-      
+
       const payload = new TextEncoder().encode(JSON.stringify(message));
       await localParticipant.publishData(payload, { reliable: true });
-      
+
     } catch (e: any) {
       setError(e.message || 'Translation failed');
       console.error('[Orbit] Send translation failed:', e);
@@ -361,7 +379,7 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
   // Listen for incoming translations
   useEffect(() => {
     if (!room || !options.enabled) return;
-    
+
     const handleDataReceived = (
       payload: Uint8Array,
       participant?: RemoteParticipant
@@ -370,10 +388,10 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
       if (!participant || participant.identity === localParticipant?.identity) {
         return;
       }
-      
+
       try {
         const data = JSON.parse(new TextDecoder().decode(payload));
-        
+
         if (data.type === 'orbit_transcript' && data.text) {
           translateIncomingTranscript(data.text, participant.identity, data.timestamp);
           return;
@@ -386,13 +404,13 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
           // Add to incoming translations list
           setIncomingTranslations(prev => [
             ...prev.slice(-50), // Keep last 50
-            { 
-              participantId: participant.identity, 
-              text: data.text, 
-              timestamp: data.timestamp 
+            {
+              participantId: participant.identity,
+              text: data.text,
+              timestamp: data.timestamp
             }
           ]);
-          
+
           // Queue TTS synthesis
           ttsQueueRef.current.push({ text: data.text, participantId: participant.identity });
           processTTSQueue();
@@ -401,9 +419,9 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
         // Not a translation message, ignore
       }
     };
-    
+
     room.on(RoomEvent.DataReceived, handleDataReceived);
-    
+
     return () => {
       room.off(RoomEvent.DataReceived, handleDataReceived);
     };

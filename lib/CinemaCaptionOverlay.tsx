@@ -4,33 +4,33 @@ import { useDeepgramTranscription } from './useDeepgramTranscription';
 import { useRoomContext, useLocalParticipant } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { supabase } from './orbit/services/supabaseClient';
+import { dbClient as supabase } from './orbit/services/dbClient';
 
 const overlayStyles = {
-  captionBar: {
-    position: 'fixed' as 'fixed',
-    bottom: 80,
-    left: '20px',
-    right: '20px',
-    width: 'auto',
-    height: '50px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    padding: '0 20px',
-    zIndex: 999,
-  },
-  transcriptText: {
-    fontSize: '14px',
-    color: '#66ff00',
-    fontWeight: 600,
-    textAlign: 'left' as 'left',
-    whiteSpace: 'nowrap' as 'nowrap',
-    overflow: 'visible',
-    width: '100%',
-    textShadow: '0px 2px 4px rgba(0,0,0,0.9)',
-    animation: 'slideIn 0.3s ease-out',
-  },
+    captionBar: {
+        position: 'fixed' as 'fixed',
+        bottom: 80,
+        left: '20px',
+        right: '20px',
+        width: 'auto',
+        height: '50px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        padding: '0 20px',
+        zIndex: 999,
+    },
+    transcriptText: {
+        fontSize: '14px',
+        color: '#66ff00',
+        fontWeight: 600,
+        textAlign: 'left' as 'left',
+        whiteSpace: 'nowrap' as 'nowrap',
+        overflow: 'visible',
+        width: '100%',
+        textShadow: '0px 2px 4px rgba(0,0,0,0.9)',
+        animation: 'slideIn 0.3s ease-out',
+    },
 };
 
 interface CinemaCaptionOverlayProps {
@@ -41,8 +41,8 @@ interface CinemaCaptionOverlayProps {
     targetLanguage?: string;
 }
 
-export function CinemaCaptionOverlay({ 
-    onTranscriptSegment, 
+export function CinemaCaptionOverlay({
+    onTranscriptSegment,
     defaultDeviceId,
     isFloorHolder = false,
     onClaimFloor,
@@ -54,7 +54,7 @@ export function CinemaCaptionOverlay({
     const room = useRoomContext();
     const { localParticipant } = useLocalParticipant();
     const lastMicStateRef = useRef<boolean | null>(null);
-    
+
     // ====== GEMINI LIVE (for translation/TTS response) ======
     const {
         isRecording: isGeminiActive,
@@ -78,10 +78,10 @@ export function CinemaCaptionOverlay({
     // ====== DEEPGRAM (for STT) ======
     const handleDeepgramTranscript = useCallback((result: { transcript: string; isFinal: boolean; confidence: number }) => {
         if (!result.transcript) return;
-        
+
         // Display user speech immediately
         setDisplayText(result.transcript);
-        
+
         // Save to DB (if floor holder)
         if (isFloorHolder && result.isFinal) {
             onTranscriptSegment({ text: result.transcript, language: 'en', isFinal: true });
@@ -142,7 +142,7 @@ export function CinemaCaptionOverlay({
 
         if (lastMicStateRef.current !== isMicEnabled) {
             lastMicStateRef.current = isMicEnabled;
-            
+
             if (isMicEnabled && isFloorHolder) {
                 // Start both Deepgram (STT) and Gemini (TTS)
                 if (!isDeepgramActive) startDeepgram(defaultDeviceId);
@@ -168,7 +168,7 @@ export function CinemaCaptionOverlay({
         if (captionRef.current && displayText) {
             const element = captionRef.current;
             const isOverflowing = element.scrollWidth > element.clientWidth;
-            
+
             if (isOverflowing) {
                 setIsFading(true);
                 setTimeout(() => {
@@ -183,7 +183,7 @@ export function CinemaCaptionOverlay({
 
     return (
         <div style={overlayStyles.captionBar}>
-            <div 
+            <div
                 ref={captionRef}
                 style={{
                     ...overlayStyles.transcriptText,
@@ -191,7 +191,7 @@ export function CinemaCaptionOverlay({
                     transition: 'opacity 0.3s ease-out'
                 }}
             >
-                {displayText || (isActive && isFloorHolder && <span style={{color: '#66ff00', fontSize: '14px', fontWeight: 600}}>🎤 Listening...</span>)}
+                {displayText || (isActive && isFloorHolder && <span style={{ color: '#66ff00', fontSize: '14px', fontWeight: 600 }}>🎤 Listening...</span>)}
             </div>
         </div>
     );

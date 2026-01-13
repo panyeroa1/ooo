@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
-interface UseDeepgramLiveOptions {
+interface UseVoiceSocketOptions {
   deviceId?: string;
   /** Model: 'nova-3' (best), 'nova-2', 'whisper-large' */
   model?: 'nova-3' | 'nova-2' | 'whisper-large';
@@ -13,6 +13,7 @@ interface UseDeepgramLiveOptions {
    * - 'nl' for Dutch
    * - 'fr' for French
    * - 'en' for English
+   * - 'auto' for auto-detect
    */
   language?: string;
   /** Keywords for vocabulary boosting: ['word:intensity', ...] */
@@ -21,7 +22,7 @@ interface UseDeepgramLiveOptions {
   diarize?: boolean;
 }
 
-interface UseDeepgramLiveReturn {
+interface UseVoiceSocketReturn {
   isListening: boolean;
   transcript: string;
   isFinal: boolean;
@@ -46,7 +47,7 @@ interface UseDeepgramLiveReturn {
  * - endpointing=100 (optimal for code-switching)
  * - interim_results=true (real-time feedback)
  */
-export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgramLiveReturn {
+export function useVoiceSocket(options: UseVoiceSocketOptions = {}): UseVoiceSocketReturn {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isFinal, setIsFinal] = useState(false);
@@ -61,23 +62,39 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
     }
   }, [options.language, currentLanguage]);
 
+  /* State for reconnection logic */
+  const [retryCount, setRetryCount] = useState(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const MAX_RETRIES = 5;
+  const BASE_DELAY = 1000;
+
   const socketRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const startingRef = useRef(false);
 
   const stop = useCallback(() => {
     console.log("🔌 Orbit: Stopping transcription engine...");
     setIsListening(false);
     startingRef.current = false;
-    
+
+    // Clear any pending reconnection
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    setRetryCount(0);
+
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
     }
     recorderRef.current = null;
 
     if (socketRef.current) {
+      // Prevent reconnection triggered by onclose
+      socketRef.current.onclose = null;
       socketRef.current.close();
       socketRef.current = null;
     }
@@ -88,13 +105,11 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
     }
 
     if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current.close().catch(() => { });
       audioContextRef.current = null;
     }
     analyserRef.current = null;
   }, []);
-
-  const startingRef = useRef(false);
 
   const start = useCallback(async (deviceId?: string) => {
     if (startingRef.current) {
@@ -102,34 +117,45 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       return;
     }
     startingRef.current = true;
-    console.log("🔌 Orbit: Starting transcription engine...");
+    console.log(`🔌 Orbit: Starting transcription engine... (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
 
     const apiKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
     if (!apiKey || apiKey === 'YOUR_DEEPGRAM_API_KEY') {
       console.warn("[Orbit] Deepgram Key is missing. Voice transcription disabled.");
       startingRef.current = false;
-      return; 
+      return;
     }
 
-    setError(null);
-    setTranscript('');
-    setWords([]);
-    setIsFinal(false);
+    // Only clear transcripts on fresh start, not reconnection
+    if (retryCount === 0) {
+      setError(null);
+      setTranscript('');
+      setWords([]);
+      setIsFinal(false);
+    }
 
     try {
       // ... existing getUserMedia and AudioContext setup ...
       const constraints: MediaStreamConstraints = {
-        audio: deviceId 
+        audio: deviceId
           ? { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true }
           : { echoCancellation: true, noiseSuppression: true }
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
+
+      // Reuse stream if available to prevent permission prompt flashing on reconnect
+      let stream = streamRef.current;
+      if (!stream || !stream.active) {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+      }
 
       const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
-      const audioContext = new AudioContextClass();
+      const audioContext = audioContextRef.current || new AudioContextClass();
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       audioContextRef.current = audioContext;
-      
+
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
@@ -138,7 +164,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
 
       const model = options.model || 'nova-2';
       const language = currentLanguage || 'multi';
-      
+
       const params = new URLSearchParams({
         model,
         smart_format: 'true',
@@ -186,7 +212,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
 
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
       console.log(`🔌 Orbit: Connecting to ${wsUrl.replace(/token=[^&]+/, 'token=***')}`);
-      
+
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 
@@ -195,16 +221,17 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
         setIsListening(true);
         setError(null);
         startingRef.current = false;
-        
+        setRetryCount(0); // Reset retry count on successful connection
+
         try {
-          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-            ? 'audio/webm;codecs=opus' 
-            : MediaRecorder.isTypeSupported('audio/webm') 
-              ? 'audio/webm' 
+          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm')
+              ? 'audio/webm'
               : 'audio/mp4';
 
           console.log(`🔌 Orbit: Using MediaRecorder mimeType: ${mimeType}`);
-          const recorder = new MediaRecorder(stream, { 
+          const recorder = new MediaRecorder(stream!, {
             mimeType,
             audioBitsPerSecond: 128000
           });
@@ -231,7 +258,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
           const alt = data.channel?.alternatives?.[0];
           const text = alt?.transcript;
           const newWords = alt?.words || [];
-          
+
           if (text) {
             setTranscript(text);
             if (newWords.length > 0) {
@@ -241,9 +268,9 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
           }
 
           if (data.metadata?.language) {
-             setDetectedLanguage(data.metadata.language);
+            setDetectedLanguage(data.metadata.language);
           } else if (data.results?.channels?.[0]?.detected_language) {
-             setDetectedLanguage(data.results.channels[0].detected_language);
+            setDetectedLanguage(data.results.channels[0].detected_language);
           }
         } catch (e) {
           console.error('❌ Orbit: Error parsing response:', e);
@@ -252,18 +279,28 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
 
       socket.onerror = (error) => {
         console.error("❌ Orbit: WebSocket error event:", error);
-        setError('Orbit connection error');
-        startingRef.current = false;
-        // Don't call stop() immediately, let onclose handle cleanup if it triggers
+        // Error will be handled by onclose
       };
 
       socket.onclose = (event) => {
         console.log(`🔌 Orbit: WebSocket closed. Code: ${event.code}, Reason: ${event.reason || 'none'}`);
         setIsListening(false);
         startingRef.current = false;
-        
+
+        // Auto-reconnection logic for abnormal closures
         if (event.code !== 1000 && event.code !== 1001) {
-           setError(`Orbit connection closed: ${event.code} ${event.reason || ''}`);
+          if (retryCount < MAX_RETRIES) {
+            const delay = Math.min(30000, BASE_DELAY * Math.pow(2, retryCount));
+            console.log(`🔄 Orbit: Reconnecting in ${delay}ms... (Attempt ${retryCount + 1})`);
+            setError(`Connection lost. Reconnecting in ${delay / 1000}s...`);
+
+            reconnectTimeoutRef.current = setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+              start(deviceId);
+            }, delay);
+          } else {
+            setError(`Orbit connection failed after ${MAX_RETRIES} attempts. Please refresh.`);
+          }
         }
       };
 
@@ -273,7 +310,7 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
       startingRef.current = false;
       stop();
     }
-  }, [options.model, options.diarize, options.keywords, stop, currentLanguage]);
+  }, [options.model, options.diarize, options.keywords, stop, currentLanguage, retryCount]);
 
   const setLanguage = useCallback((lang: string) => {
     if (lang !== currentLanguage) {
@@ -284,13 +321,15 @@ export function useDeepgramLive(options: UseDeepgramLiveOptions = {}): UseDeepgr
   // Restart when language changes while listening
   useEffect(() => {
     if (isListening && currentLanguage !== options.language && options.language) {
-       console.log(`🔄 Orbit: Language changed to ${options.language}, restarting...`);
-       const currentDeviceId = streamRef.current?.getAudioTracks()[0]?.getSettings().deviceId;
-       stop();
-       const timer = setTimeout(() => {
-         start(currentDeviceId);
-       }, 200);
-       return () => clearTimeout(timer);
+      console.log(`🔄 Orbit: Language changed to ${options.language}, restarting...`);
+      const currentDeviceId = streamRef.current?.getAudioTracks()[0]?.getSettings().deviceId;
+      stop();
+      // Reset retries for explicit language change
+      setRetryCount(0);
+      const timer = setTimeout(() => {
+        start(currentDeviceId);
+      }, 200);
+      return () => clearTimeout(timer);
     }
   }, [isListening, options.language, currentLanguage, stop, start]);
 

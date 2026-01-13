@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/orbit/services/supabaseClient';
+import { dbClient as supabase } from '@/lib/orbit/services/dbClient';
 import styles from '@/styles/PreJoin.module.css';
 import { LANGUAGES } from '@/lib/orbit/types';
 
@@ -74,7 +74,7 @@ const VideoOffIcon = () => (
 export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomPreJoinProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
+
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -102,7 +102,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   const [selectedVideo, setSelectedVideo] = useState(defaults?.videoDeviceId || '');
 
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Permission states
   const [cameraPermission, setCameraPermission] = useState<PermissionState>('checking');
   const [micPermission, setMicPermission] = useState<PermissionState>('checking');
@@ -150,22 +150,22 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   const requestPermissions = useCallback(async () => {
     setPermissionError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: true, 
-        video: true 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
       });
-      
+
       // Permissions granted - stop the test stream
       stream.getTracks().forEach(t => t.stop());
-      
+
       setCameraPermission('granted');
       setMicPermission('granted');
-      
+
       return true;
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Permission request failed:', error);
-      
+
       if (error.name === 'NotAllowedError') {
         setPermissionError('Camera and microphone access was denied. Please allow access in your browser settings.');
         setCameraPermission('denied');
@@ -175,7 +175,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
       } else {
         setPermissionError(`Failed to access devices: ${error.message}`);
       }
-      
+
       onError?.(error);
       return false;
     }
@@ -185,15 +185,15 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   const enumerateDevices = useCallback(async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      
+
       const audioInputs = devices
         .filter(d => d.kind === 'audioinput')
         .map(d => ({ deviceId: d.deviceId, label: d.label || `Microphone ${d.deviceId.slice(0, 4)}` }));
-      
+
       const audioOutputs = devices
         .filter(d => d.kind === 'audiooutput')
         .map(d => ({ deviceId: d.deviceId, label: d.label || `Speaker ${d.deviceId.slice(0, 4)}` }));
-      
+
       const videoInputs = devices
         .filter(d => d.kind === 'videoinput')
         .map(d => ({ deviceId: d.deviceId, label: d.label || `Camera ${d.deviceId.slice(0, 4)}` }));
@@ -324,7 +324,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
   useEffect(() => {
     checkPermissions();
     fetchOrCreateRoom();
-    
+
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
@@ -344,7 +344,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
         }
       }
     };
-    
+
     if (cameraPermission !== 'checking' && micPermission !== 'checking') {
       init();
     }
@@ -362,7 +362,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
     if (!username.trim()) return;
 
     setIsLoading(true);
-    
+
     // Stop preview stream before joining
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
@@ -422,8 +422,8 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
         {permissionError && (
           <div className={styles.permissionError}>
             <p>{permissionError}</p>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleRetryPermissions}
               className={styles.retryButton}
             >
@@ -447,7 +447,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
               {cameraPermission === 'denied' ? '🚫' : '📷'}
             </div>
           )}
-          
+
           <div className={styles.videoControls}>
             <button
               type="button"
@@ -532,7 +532,7 @@ export function CustomPreJoin({ roomName, onSubmit, onError, defaults }: CustomP
               ))}
             </select>
           </div>
-          
+
           <div className={styles.deviceRow}>
             <label className={styles.deviceLabel}>🌐 Translator Language</label>
             <select

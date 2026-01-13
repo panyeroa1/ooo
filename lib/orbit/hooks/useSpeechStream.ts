@@ -2,13 +2,13 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
-interface UseInkLiveOptions {
+interface UseSpeechStreamOptions {
   deviceId?: string;
   model?: string;
   language?: string;
 }
 
-interface UseInkLiveReturn {
+interface UseSpeechStreamReturn {
   isListening: boolean;
   transcript: string;
   isFinal: boolean;
@@ -25,7 +25,7 @@ interface UseInkLiveReturn {
 /**
  * Hook for real-time Cartesia Ink (ink-whisper) WebSocket STT
  */
-export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
+export function useSpeechStream(options: UseSpeechStreamOptions = {}): UseSpeechStreamReturn {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isFinal, setIsFinal] = useState(false);
@@ -33,6 +33,12 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
   const [error, setError] = useState<string | null>(null);
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [currentLanguage, setCurrentLanguage] = useState(options.language || 'en');
+
+  /* State for reconnection logic */
+  const [retryCount, setRetryCount] = useState(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const MAX_RETRIES = 5;
+  const BASE_DELAY = 1000;
 
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -46,6 +52,13 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
     setIsListening(false);
     startingRef.current = false;
 
+    // Clear any pending reconnection
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    setRetryCount(0);
+
     if (processorRef.current) {
       processorRef.current.disconnect();
       processorRef.current = null;
@@ -55,6 +68,8 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
       if (socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.send("done");
       }
+      // Prevent reconnection triggered by onclose
+      socketRef.current.onclose = null;
       socketRef.current.close();
       socketRef.current = null;
     }
@@ -77,7 +92,7 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
       return;
     }
     startingRef.current = true;
-    console.log("🔌 Ink: Starting transcription engine...");
+    console.log(`🔌 Ink: Starting transcription engine... (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
 
     const apiKey = process.env.NEXT_PUBLIC_CARTESIA_API_KEY;
     if (!apiKey) {
@@ -86,10 +101,13 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
       return;
     }
 
-    setError(null);
-    setTranscript('');
-    setWords([]);
-    setIsFinal(false);
+    // Only clear transcripts on fresh start
+    if (retryCount === 0) {
+      setError(null);
+      setTranscript('');
+      setWords([]);
+      setIsFinal(false);
+    }
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -97,11 +115,20 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
           ? { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true }
           : { echoCancellation: true, noiseSuppression: true }
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
+
+      // Reuse stream if available
+      let stream = streamRef.current;
+      if (!stream || !stream.active) {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+      }
 
       // Cartesia Ink recommends 16kHz PCM
-      const audioContext = new AudioContext({ sampleRate: 16000 });
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+      const audioContext = audioContextRef.current || new AudioContextClass({ sampleRate: 16000 });
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       audioContextRef.current = audioContext;
 
       const source = audioContext.createMediaStreamSource(stream);
@@ -138,6 +165,7 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
         setIsListening(true);
         setError(null);
         startingRef.current = false;
+        setRetryCount(0); // Reset retry count
 
         processor.onaudioprocess = (e) => {
           if (socket.readyState !== WebSocket.OPEN) return;
@@ -177,16 +205,28 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
 
       socket.onerror = (error) => {
         console.error("❌ Ink: WebSocket error event:", error);
-        setError('Ink connection error');
-        startingRef.current = false;
+        // Error will be handled by onclose
       };
 
       socket.onclose = (event) => {
         console.log(`🔌 Ink: WebSocket closed. Code: ${event.code}`);
         setIsListening(false);
         startingRef.current = false;
+
+        // Auto-reconnection logic
         if (event.code !== 1000 && event.code !== 1001) {
-          setError(`Ink connection closed: ${event.code}`);
+          if (retryCount < MAX_RETRIES) {
+            const delay = Math.min(30000, BASE_DELAY * Math.pow(2, retryCount));
+            console.log(`🔄 Ink: Reconnecting in ${delay}ms... (Attempt ${retryCount + 1})`);
+            setError(`Connection lost. Reconnecting in ${delay / 1000}s...`);
+
+            reconnectTimeoutRef.current = setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+              start(deviceId);
+            }, delay);
+          } else {
+            setError(`Ink connection failed after ${MAX_RETRIES} attempts.`);
+          }
         }
       };
 
@@ -196,7 +236,7 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
       startingRef.current = false;
       stop();
     }
-  }, [options.model, stop, currentLanguage]);
+  }, [options.model, stop, currentLanguage, retryCount]);
 
   const setLanguage = useCallback((lang: string) => {
     if (lang !== currentLanguage) {
@@ -215,6 +255,8 @@ export function useInkLive(options: UseInkLiveOptions = {}): UseInkLiveReturn {
       console.log(`🔄 Ink: Language changed to ${options.language}, restarting...`);
       const currentDeviceId = streamRef.current?.getAudioTracks()[0]?.getSettings().deviceId;
       stop();
+      // Reset retries for explicit language change
+      setRetryCount(0);
       const timer = setTimeout(() => {
         start(currentDeviceId);
       }, 200);

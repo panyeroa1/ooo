@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/orbit/services/supabaseClient';
+import { dbClient as supabase } from '@/lib/orbit/services/dbClient';
 import styles from '../styles/Portal.module.css';
 
 export default function Page() {
@@ -17,9 +17,9 @@ export default function Page() {
     async function boot() {
       try {
         if (!supabase) {
-           console.warn("Supabase not configured, skipping auth.");
-           setAuthStatus('OFFLINE (No DB)');
-           return;
+          console.warn("Supabase not configured, skipping auth.");
+          setAuthStatus('OFFLINE (No DB)');
+          return;
         }
 
         const { data, error } = await supabase.auth.signInAnonymously();

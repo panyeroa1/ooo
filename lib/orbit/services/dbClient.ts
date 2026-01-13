@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '').trim();
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.warn("⚠️ Supabase credentials not found. Database features will be disabled.");
@@ -20,10 +20,10 @@ if (typeof window !== 'undefined') {
 }
 
 // Create a safe client that won't crash if env vars are missing
-export const supabase = SUPABASE_URL && SUPABASE_KEY
+export const dbClient = SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
   : null as any; // Fallback to null to prevent crashes
 
-if (!supabase) {
+if (!dbClient) {
   console.warn("⚠️ Supabase client not initialized - database features will be disabled");
 }

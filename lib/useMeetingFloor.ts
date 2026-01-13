@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { supabase } from '@/lib/orbit/services/supabaseClient';
+import { dbClient as supabase } from '@/lib/orbit/services/dbClient';
 
 export interface MeetingFloorState {
   activeSpeakerId: string | null;
@@ -24,13 +24,13 @@ export function useMeetingFloor(roomName: string, userId: string) {
         .select('*')
         .eq('meeting_id', roomName)
         .maybeSingle(); // Use maybeSingle to avoid 406 on empty result
-      
+
       if (data) {
         setActiveSpeakerId(data.active_speaker_id);
         setLeasedUntil(data.leased_until);
       } else {
         // Row doesn't exist yet, we can try to claim it if we are the first
-        claimFloor(); 
+        claimFloor();
       }
     };
 

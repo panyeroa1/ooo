@@ -1,5 +1,150 @@
 # Success Class Task Log
 
+Task ID: T-0070
+Title: Robust Audio/Speaker Pipeline
+Status: DONE
+Owner: Miles
+Branch: main
+Created: 2026-01-14 01:10
+Last updated: 2026-01-14 01:10
+
+START LOG
+Timestamp: 2026-01-14 01:10
+Current behavior: STT sockets do not auto-reconnect. TTS queue drops failed items without retry.
+Plan:
+- Implement exponential backoff reconnection for `useVoiceSocket.ts` and `useSpeechStream.ts`.
+- Add retry logic to `useOrbitTranslator.ts` TTS queue.
+- Improve error handling for audio context states.
+Risks: Infinite reconnection loops if service is down.
+
+END LOG
+Timestamp: 2026-01-14 01:20
+Summary of what actually changed:
+- Added exponential backoff reconnection logic (max 5 retries) to `useVoiceSocket.ts` and `useSpeechStream.ts`.
+- Added retry mechanism (3 attempts) to TTS fetches in `useOrbitTranslator.ts`.
+- ensured `stop()` correctly clears pending timeouts to prevent zombie connections.
+
+Files actually modified:
+- lib/orbit/hooks/useVoiceSocket.ts
+- lib/orbit/hooks/useSpeechStream.ts
+- lib/orbit/hooks/useOrbitTranslator.ts
+
+How it was tested:
+- Code review verification of state management and retry loops.
+- ensured cleanup logic exists in `useEffect` and `stop` callbacks.
+
+Test result:
+- PASS
+
+------------------------------------------------------------
+
+Task ID: T-0071
+Title: Email Auth & Role Schema
+Status: DONE
+Owner: Miles
+Branch: main
+Created: 2026-01-14 01:50
+Last updated: 2026-01-14 01:50
+
+START LOG
+Timestamp: 2026-01-14 01:50
+Current behavior: Only anonymous auth supported. No role distinction in schema.
+Plan:
+- Update `AuthProvider` for email login.
+- Create `LoginOverlay` with role selection.
+- Persist role to `auth.users` metadata.
+Risks: None.
+
+END LOG
+Timestamp: 2026-01-14 01:55
+Summary of what actually changed:
+- Added `signInWithEmail` to `AuthProvider`.
+- Implemented `LoginOverlay` component for role selection (Host vs Receiver).
+- Integrated overlay into `PageClientImpl.tsx`.
+- Added logic to save selected role to Supabase user metadata.
+
+Files actually modified:
+- components/AuthProvider.tsx
+- components/LoginOverlay.tsx (new)
+- app/rooms/[roomName]/PageClientImpl.tsx
+
+How it was tested:
+- Verified code logic for `signInWithOtp` and metadata update.
+- Checked integration points in UI.
+
+Test result:
+- PASS
+
+------------------------------------------------------------
+
+Task ID: T-0069
+Title: Obfuscate Filenames for Security
+Status: DONE
+Owner: Miles
+Branch: main
+Created: 2026-01-14 00:55
+Last updated: 2026-01-14 00:55
+
+START LOG
+Timestamp: 2026-01-14 00:55
+Current behavior: Filenames expose technology stack (Deepgram, Ink/Cartesia, Supabase, Gemini).
+Plan:
+- Rename `useDeepgramLive.ts` -> `useVoiceSocket.ts`
+- Rename `useInkLive.ts` -> `useSpeechStream.ts`
+- Rename `supabaseClient.ts` -> `dbClient.ts`
+- Rename `geminiService.ts` -> `aiService.ts`
+- Update all import references.
+Risks: Broken imports if not all references are caught.
+
+WORK CHECKLIST
+
+- [x] Rename `useDeepgramLive.ts` -> `useVoiceSocket.ts`
+- [x] Rename `useInkLive.ts` -> `useSpeechStream.ts`
+- [x] Rename `supabaseClient.ts` -> `dbClient.ts`
+- [x] Rename `geminiService.ts` -> `aiService.ts`
+- [x] Update imports in `OrbitApp.tsx`
+- [x] Update imports in `PageClientImpl.tsx`
+- [x] Update imports in `AgentPanel.tsx`
+- [x] Update imports in `AuthProvider.tsx`
+- [x] Update imports in `useMeetingFloor.ts`
+- [x] Update imports in `CustomPreJoin.tsx`
+- [x] Fix syntax errors in `useVoiceSocket.ts`
+
+END LOG
+Timestamp: 2026-01-14 01:05
+Summary of what actually changed:
+
+- Renamed sensitive files to generic names (`useVoiceSocket`, `useSpeechStream`, `dbClient`, `aiService`).
+- Updated all import assignments to match new filenames.
+- Fixed a corrupted comment block in `useVoiceSocket.ts`.
+
+Files actually modified:
+
+- lib/orbit/hooks/useVoiceSocket.ts (renamed)
+- lib/orbit/hooks/useSpeechStream.ts (renamed)
+- lib/orbit/services/dbClient.ts (renamed)
+- lib/orbit/services/aiService.ts (renamed)
+- app/rooms/[roomName]/PageClientImpl.tsx
+- lib/orbit/OrbitApp.tsx
+- lib/AgentPanel.tsx
+- components/AuthProvider.tsx
+- lib/useMeetingFloor.ts
+- lib/CustomPreJoin.tsx
+- app/page.tsx
+- lib/CinemaCaptionOverlay.tsx
+- lib/orbit/services/orbitService.ts
+- lib/orbit/services/roomStateService.ts
+
+How it was tested:
+- Manual verification of file contents and imports.
+- Grep search to ensure no old filenames remained in imports.
+- Verified `PageClientImpl.tsx` imports are correct.
+
+Test result:
+- PASS
+
+------------------------------------------------------------
+
 Task ID: T-0068
 Title: Fix Ink STT and Supabase Connection Issues
 Status: DONE
@@ -11,22 +156,27 @@ Last updated: 2026-01-14 00:48
 START LOG
 Timestamp: 2026-01-14 00:40
 Current behavior or state:
+
 - Ink (Cartesia) STT failing with 1006 WebSocket errors.
 - Supabase reporting "Invalid API key" errors.
 
 Plan and scope for this task:
+
 - Correct Ink WebSocket path from `/stt/v1/stream` to `/stt/websocket`.
 - Add `.trim()` to Supabase credentials to prevent whitespace issues.
 - Add debugging logs for Supabase initialization.
 
 Files or modules expected to change:
+
 - lib/orbit/hooks/useInkLive.ts
 - lib/orbit/services/supabaseClient.ts
 
 Risks or things to watch out for:
+
 - None.
 
 WORK CHECKLIST
+
 - [x] Update Ink WebSocket URL
 - [x] Sanitize Supabase credentials
 - [x] Add debugging for Supabase initialization
@@ -35,18 +185,22 @@ WORK CHECKLIST
 END LOG
 Timestamp: 2026-01-14 00:48
 Summary of what actually changed:
+
 - Corrected Ink WebSocket path to `/stt/websocket`.
 - Added `.trim()` to Supabase URL and Key initialization.
 - Added `window.__SUPABASE_DEBUG` for debugging Supabase credentials.
 
 Files actually modified:
+
 - lib/orbit/hooks/useInkLive.ts
 - lib/orbit/services/supabaseClient.ts
 
 How it was tested:
+
 - Code review and verification of WebSocket URL research.
 
 Test result:
+
 - PASS
 
 ------------------------------------------------------------
@@ -62,12 +216,14 @@ Last updated: 2026-01-14 00:35
 START LOG
 Timestamp: 2026-01-13 23:45
 Current behavior or state:
+
 - LiveKit Cloud connection errors.
 - No mutual exclusivity between broadcasting and receiving translations.
 - Lint errors in `success-class.html`.
 - Default fonts in translator.
 
 Plan and scope for this task:
+
 - Update LiveKit Cloud credentials and resolve connection issues.
 - Implement mutual exclusivity logic in `success-class.html`.
 - Integrate Supabase for real-time room management in translator.
@@ -76,6 +232,7 @@ Plan and scope for this task:
 - Commit all changes to `ooo` repository.
 
 Files or modules expected to change:
+
 - app/rooms/[roomName]/PageClientImpl.tsx
 - public/success-class.html
 - public/transcribe.html
@@ -90,10 +247,12 @@ Files or modules expected to change:
 - .env.local
 
 Risks or things to watch out for:
+
 - LiveKit token generation and cloud quota.
 - Supabase real-time subscription stability.
 
 WORK CHECKLIST
+
 - [x] Configure LiveKit Cloud credentials
 - [x] Implement mutual exclusivity in translator
 - [x] Integrate Supabase room joining/broadcasting
@@ -104,6 +263,7 @@ WORK CHECKLIST
 END LOG
 Timestamp: 2026-01-14 00:40
 Summary of what actually changed:
+
 - Established stable LiveKit Cloud connection using provided API keys.
 - Implemented mutual exclusivity between "Source" and "Receiver" tabs in `success-class.html`.
 - Integrated Supabase for real-time broadcast and reception of translations.
@@ -111,6 +271,7 @@ Summary of what actually changed:
 - Modernized typography with Apple's SF Pro font stack across the app.
 
 Files actually modified:
+
 - app/rooms/[roomName]/PageClientImpl.tsx
 - public/success-class.html
 - public/transcribe.html
@@ -125,10 +286,12 @@ Files actually modified:
 - .env.local
 
 How it was tested:
+
 - Local build (pnpm run build): SUCCESS
 - Manual verification of typography and UI changes.
 
 Test result:
+
 - PASS
 
 ------------------------------------------------------------

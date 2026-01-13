@@ -1,9 +1,9 @@
-import { supabase } from './supabaseClient';
+import { dbClient as supabase } from './dbClient';
 import { RoomState } from '../types';
 
 export async function getRoomState(meetingId: string): Promise<RoomState> {
   const { data } = await supabase.from('meetings').select('*').eq('meeting_id', meetingId).single();
-  
+
   if (!data) return { hostId: null, activeSpeaker: null, isFloorLocked: false, conversationMode: 'manual', raiseHandQueue: [], lockVersion: 0 };
 
   return {
@@ -26,24 +26,24 @@ export function subscribeToRoom(meetingId: string, callback: (state: RoomState) 
   getRoomState(meetingId).then(state => callback(state));
 
   const channel = supabase.channel(`room:${meetingId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings', filter: `meeting_id=eq.${meetingId}` }, 
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings', filter: `meeting_id=eq.${meetingId}` },
       async (payload: any) => {
         const newRow = payload.new;
         if (newRow) {
-           // If we have a speaker ID, we ideally want their name. for now callback with generic
-           callback({
-             hostId: newRow.host_id || null,
-             isFloorLocked: newRow.is_floor_locked || false,
-             conversationMode: newRow.conversation_mode || 'manual',
-             activeSpeaker: newRow.active_speaker_id ? {
-               userId: newRow.active_speaker_id,
-               userName: 'Speaker', 
-               sessionId: 'live', 
-               since: Date.now()
-             } : null,
-             raiseHandQueue: [],
-             lockVersion: Date.now()
-           });
+          // If we have a speaker ID, we ideally want their name. for now callback with generic
+          callback({
+            hostId: newRow.host_id || null,
+            isFloorLocked: newRow.is_floor_locked || false,
+            conversationMode: newRow.conversation_mode || 'manual',
+            activeSpeaker: newRow.active_speaker_id ? {
+              userId: newRow.active_speaker_id,
+              userName: 'Speaker',
+              sessionId: 'live',
+              since: Date.now()
+            } : null,
+            raiseHandQueue: [],
+            lockVersion: Date.now()
+          });
         }
       }
     )
@@ -68,7 +68,7 @@ export async function ensureMeetingRow(meetingId: string) {
 
 export async function tryAcquireSpeaker(meetingId: string, userId: string, force: boolean = false): Promise<boolean> {
   await ensureMeetingRow(meetingId);
-  
+
   // Optimistic locking: Update if NULL OR if I am already the speaker
   let query = supabase
     .from('meetings')
@@ -92,7 +92,7 @@ export async function releaseSpeaker(meetingId: string, userId: string) {
       .update({ active_speaker_id: null, is_speaking: false } as any)
       .eq('meeting_id', meetingId)
       .eq('active_speaker_id', userId);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export async function claimHost(meetingId: string, userId: string) {

@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from './services/supabaseClient';
+import { dbClient as supabase } from './services/dbClient';
 import { AppMode, Language, LANGUAGES, RoomState, AudioSource, EmotionType, EMOTION_COLORS } from './types';
 import TranslatorDock from './components/TranslatorDock';
 import ErrorBanner from './components/ErrorBanner';
 import * as orbitService from './services/orbitService';
 import * as roomStateService from './services/roomStateService';
-import { startTranscriptionSession } from './services/geminiService';
+import { startTranscriptionSession } from './services/aiService';
 
 
 const getStoredUserId = () => {
@@ -18,7 +18,7 @@ const getStoredUserId = () => {
       stored = crypto.randomUUID();
     } else {
       // Fallback UUID v4 generator
-      stored = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      stored = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
       });
@@ -39,7 +39,7 @@ export function OrbitApp() {
 
   const [errorMessage, setErrorMessage] = useState('');
   const [transcriptionEngine, setTranscriptionEngine] = useState<'webspeech' | 'deepgram' | 'gemini'>('webspeech');
-  
+
   // Orbit / Gemini Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -54,19 +54,19 @@ export function OrbitApp() {
     const initSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (session?.user) {
           setSessionUser(session.user);
         }
 
         // Initialize meetingId regardless of session (allows guest use)
         let currentMeetingId = sessionStorage.getItem('eburon_meeting_id');
-        
+
         // Sanitize: remove any port numbers (e.g. :1) or invalid chars
         if (currentMeetingId && currentMeetingId.includes(':')) {
-             console.warn('Sanitizing malformed meeting ID:', currentMeetingId);
-             currentMeetingId = currentMeetingId.split(':')[0];
-             sessionStorage.setItem('eburon_meeting_id', currentMeetingId);
+          console.warn('Sanitizing malformed meeting ID:', currentMeetingId);
+          currentMeetingId = currentMeetingId.split(':')[0];
+          sessionStorage.setItem('eburon_meeting_id', currentMeetingId);
         }
 
         if (!currentMeetingId) {
@@ -81,19 +81,19 @@ export function OrbitApp() {
     initSession();
   }, [reportError]);
 
-  const [roomState, setRoomState] = useState<RoomState>({ 
+  const [roomState, setRoomState] = useState<RoomState>({
     hostId: null,
-    activeSpeaker: null, 
+    activeSpeaker: null,
     isFloorLocked: false,
     conversationMode: 'manual',
-    raiseHandQueue: [], 
-    lockVersion: 0 
+    raiseHandQueue: [],
+    lockVersion: 0
   });
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(LANGUAGES[0]);
-  
+
   const [lastFinalText, setLastFinalText] = useState<string>('');
   const [livePartialText, setLivePartialText] = useState<string>('');
-  
+
   const [fullTranscript, setFullTranscript] = useState('');
   const fullTranscriptRef = useRef('');
   useEffect(() => {
@@ -107,7 +107,7 @@ export function OrbitApp() {
 
   const recognitionRef = useRef<any>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  
+
   // VAD & Segmentation tracking
   const sentenceBufferRef = useRef('');
   const shippedCharsRef = useRef(0);
@@ -199,7 +199,7 @@ export function OrbitApp() {
 
     try {
       const audioBuffer = await audioCtx.decodeAudioData(nextBuffer);
-      
+
       // -- Output Selection (SinkId) --
       if (selectedOutputDeviceId && (audioCtx as any).setSinkId) {
         try {
@@ -212,13 +212,13 @@ export function OrbitApp() {
       const source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioCtx.destination);
-      
+
       // Visualize
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 64;
       source.connect(analyser);
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
+
       const draw = () => {
         if (!isPlayingRef.current) return;
         analyser.getByteFrequencyData(dataArray);
@@ -232,7 +232,7 @@ export function OrbitApp() {
         setAudioData(undefined);
         playNextAudio();
       };
-      
+
       source.start();
     } catch (e) {
       console.error("Audio playback error", e);
@@ -247,60 +247,60 @@ export function OrbitApp() {
 
     const item = processingQueueRef.current.shift();
     if (!item) {
-        isProcessingRef.current = false;
-        return;
+      isProcessingRef.current = false;
+      return;
     }
 
     try {
-        console.log(`[Pipeline] 3. Starting processing for: "${item.text}"`);
-        
-        // Strict Gate: Only process if in listening OR speaking mode (Translator feature)
-        if (modeRef.current !== 'listening' && modeRef.current !== 'speaking') {
-             console.log(`[Pipeline] Skipped Translation/TTS (Mode is ${modeRef.current})`);
-             // We can still update the UI with the raw text if desired
-             return; 
-        }
+      console.log(`[Pipeline] 3. Starting processing for: "${item.text}"`);
 
-        setIsTtsLoading(true);
-        
-        // 1. Translate
-        console.log(`[Pipeline] 4. Fetching Translation...`);
-        const tRes = await fetch('/api/orbit/translate', {
-            method: 'POST',
-            body: JSON.stringify({
-                text: item.text,
-                targetLang: selectedLanguageRef.current.name
-            })
+      // Strict Gate: Only process if in listening OR speaking mode (Translator feature)
+      if (modeRef.current !== 'listening' && modeRef.current !== 'speaking') {
+        console.log(`[Pipeline] Skipped Translation/TTS (Mode is ${modeRef.current})`);
+        // We can still update the UI with the raw text if desired
+        return;
+      }
+
+      setIsTtsLoading(true);
+
+      // 1. Translate
+      console.log(`[Pipeline] 4. Fetching Translation...`);
+      const tRes = await fetch('/api/orbit/translate', {
+        method: 'POST',
+        body: JSON.stringify({
+          text: item.text,
+          targetLang: selectedLanguageRef.current.name
+        })
+      });
+      const tData = await tRes.json();
+      const translated = tData.translation || item.text;
+      console.log(`[Pipeline] 5. Translation received: "${translated}"`);
+
+      setTranslatedStreamText(translated);
+
+      // 2. TTS
+      if (modeRef.current === 'listening') {
+        console.log(`[Pipeline] 6. Fetching TTS...`);
+        const ttsRes = await fetch('/api/orbit/tts', {
+          method: 'POST',
+          body: JSON.stringify({ text: translated })
         });
-        const tData = await tRes.json();
-        const translated = tData.translation || item.text;
-        console.log(`[Pipeline] 5. Translation received: "${translated}"`);
-        
-        setTranslatedStreamText(translated);
+        const arrayBuffer = await ttsRes.arrayBuffer();
+        console.log(`[Pipeline] 7. TTS Audio received: ${arrayBuffer.byteLength} bytes`);
 
-        // 2. TTS
-        if (modeRef.current === 'listening') {
-             console.log(`[Pipeline] 6. Fetching TTS...`);
-             const ttsRes = await fetch('/api/orbit/tts', {
-                method: 'POST',
-                body: JSON.stringify({ text: translated })
-             });
-             const arrayBuffer = await ttsRes.arrayBuffer();
-             console.log(`[Pipeline] 7. TTS Audio received: ${arrayBuffer.byteLength} bytes`);
-
-             if (arrayBuffer.byteLength > 0) {
-                 audioQueueRef.current.push(arrayBuffer);
-                 playNextAudio();
-             }
-        } else {
-             console.log(`[Pipeline] 6. Skipped TTS (Not in listening mode)`);
+        if (arrayBuffer.byteLength > 0) {
+          audioQueueRef.current.push(arrayBuffer);
+          playNextAudio();
         }
+      } else {
+        console.log(`[Pipeline] 6. Skipped TTS (Not in listening mode)`);
+      }
     } catch (e) {
-        console.error("[Pipeline] Error:", e);
+      console.error("[Pipeline] Error:", e);
     } finally {
-        setIsTtsLoading(false);
-        isProcessingRef.current = false;
-        processNextInQueue();
+      setIsTtsLoading(false);
+      isProcessingRef.current = false;
+      processNextInQueue();
     }
   }, [playNextAudio]);
 
@@ -308,7 +308,7 @@ export function OrbitApp() {
     const segment = text.trim();
     if (!segment) return;
     try {
-       // Append to full transcript (client-side approximation)
+      // Append to full transcript (client-side approximation)
       const newFull = (fullTranscriptRef.current + " " + segment).trim();
       setFullTranscript(newFull);
 
@@ -317,9 +317,9 @@ export function OrbitApp() {
       processingQueueRef.current.push({ text: segment, id: 'local-' + Date.now() });
       processNextInQueue();
 
-      const { error } = await supabase.from('transcriptions').insert({ 
-        meeting_id: meetingId, 
-        speaker_id: MY_USER_ID, 
+      const { error } = await supabase.from('transcriptions').insert({
+        meeting_id: meetingId,
+        speaker_id: MY_USER_ID,
         transcribe_text_segment: segment,
         full_transcription: newFull,
         users_all: [] // Placeholder for "all listening users"
@@ -334,11 +334,11 @@ export function OrbitApp() {
   useEffect(() => {
     if (mode === 'speaking' && transcriptionEngine === 'deepgram') {
       let recorder: MediaRecorder;
-      
+
       const startRecording = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined } 
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
           });
           recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
           mediaRecorderRef.current = recorder;
@@ -356,7 +356,7 @@ export function OrbitApp() {
             if (audioChunksRef.current.length > 0) {
               const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
               audioChunksRef.current = []; // Clear buffer
-              
+
               const formData = new FormData();
               formData.append('audio', blob);
               formData.append('language', selectedLanguageRef.current.code === 'auto' ? 'auto' : selectedLanguageRef.current.code);
@@ -364,12 +364,12 @@ export function OrbitApp() {
               try {
                 const res = await fetch('/api/orbit/stt', { method: 'POST', body: formData });
                 if (res.ok) {
-                    const data = await res.json();
-                    if (data.transcript && data.transcript.trim()) {
-                        console.log(`[Orbit Pro] Transcript: "${data.transcript}"`);
-                        shipSegment(data.transcript); 
-                        setLastFinalText(prev => prev + ' ' + data.transcript);
-                    }
+                  const data = await res.json();
+                  if (data.transcript && data.transcript.trim()) {
+                    console.log(`[Orbit Pro] Transcript: "${data.transcript}"`);
+                    shipSegment(data.transcript);
+                    setLastFinalText(prev => prev + ' ' + data.transcript);
+                  }
                 }
               } catch (e) {
                 console.error("Orbit Pro send error", e);
@@ -404,20 +404,20 @@ export function OrbitApp() {
         try {
           geminiSessionRef.current = await startTranscriptionSession(
             (text) => {
-               if (text.trim()) {
-                 console.log(`[Orbit Live] Transcript: "${text}"`);
-                 shipSegment(text);
-                 setLastFinalText(prev => prev + ' ' + text);
-               }
+              if (text.trim()) {
+                console.log(`[Orbit Live] Transcript: "${text}"`);
+                shipSegment(text);
+                setLastFinalText(prev => prev + ' ' + text);
+              }
             },
             () => {
-               console.log("[Orbit Live] Session ended");
+              console.log("[Orbit Live] Session ended");
             },
             selectedLanguageRef.current.name || "English"
           );
 
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined } 
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
           });
           audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
           const source = audioContext.createMediaStreamSource(stream);
@@ -458,71 +458,71 @@ export function OrbitApp() {
   }, [mode, transcriptionEngine, shipSegment, selectedDeviceId]);
 
   const toggleListen = async () => {
-    const ctx = ensureAudioContext(); 
+    const ctx = ensureAudioContext();
     if (!ctx) return;
-    
+
     if (mode === 'listening') {
       setMode('idle');
       // Unmute project audio
       try {
-          (document.querySelectorAll('audio, video') as any).forEach((el: HTMLMediaElement) => {
-              if (el.dataset.orbitAutoMuted === 'true') {
-                  el.muted = false;
-                  delete el.dataset.orbitAutoMuted;
-              }
-          });
+        (document.querySelectorAll('audio, video') as any).forEach((el: HTMLMediaElement) => {
+          if (el.dataset.orbitAutoMuted === 'true') {
+            el.muted = false;
+            delete el.dataset.orbitAutoMuted;
+          }
+        });
       } catch (e) {
-          console.error("Orbit Unmute Error", e);
+        console.error("Orbit Unmute Error", e);
       }
     } else {
       setMode('listening');
       // Auto-Mute project audio
       try {
-          (document.querySelectorAll('audio, video') as any).forEach((el: HTMLMediaElement) => {
-              if (!el.muted) {
-                  el.muted = true;
-                  el.dataset.orbitAutoMuted = 'true';
-              }
-          });
+        (document.querySelectorAll('audio, video') as any).forEach((el: HTMLMediaElement) => {
+          if (!el.muted) {
+            el.muted = true;
+            el.dataset.orbitAutoMuted = 'true';
+          }
+        });
       } catch (e) {
-          console.error("Orbit Auto-Mute Error", e);
+        console.error("Orbit Auto-Mute Error", e);
       }
-      
+
       setLivePartialText('');
       setLastFinalText('');
 
       // Fetch latest transcription to "catch up" or verify connection
       if (meetingId) {
-          console.log(`[Pipeline] Manual Fetch triggered by Listen Button for meeting: ${meetingId}`);
-          try {
-              const { data, error } = await supabase
-                .from('transcriptions')
-                .select('*')
-                .eq('meeting_id', meetingId)
-                .neq('speaker_id', MY_USER_ID)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+        console.log(`[Pipeline] Manual Fetch triggered by Listen Button for meeting: ${meetingId}`);
+        try {
+          const { data, error } = await supabase
+            .from('transcriptions')
+            .select('*')
+            .eq('meeting_id', meetingId)
+            .neq('speaker_id', MY_USER_ID)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
 
-              if (error && error.code !== 'PGRST116') { // Ignore "Row not found"
-                  console.error("Error fetching latest transcription:", error);
-              }
-
-              if (data && data.transcribe_text_segment) {
-                  console.log(`[Pipeline] Manual Fetch found: "${data.transcribe_text_segment}"`);
-                  // Only process if it looks recent or we just want to test pipeline
-                  // For now, we always process it to demonstrate "trigger" behavior
-                  processingQueueRef.current.push({
-                      text: data.transcribe_text_segment,
-                      id: data.id || 'manual-fetch'
-                  });
-                  processNextInQueue();
-              } else {
-                  console.log(`[Pipeline] Manual Fetch: No recent transcriptions found.`);
-              }
-          } catch (err) {
-              console.error("Manual fetch failed", err);
+          if (error && error.code !== 'PGRST116') { // Ignore "Row not found"
+            console.error("Error fetching latest transcription:", error);
           }
+
+          if (data && data.transcribe_text_segment) {
+            console.log(`[Pipeline] Manual Fetch found: "${data.transcribe_text_segment}"`);
+            // Only process if it looks recent or we just want to test pipeline
+            // For now, we always process it to demonstrate "trigger" behavior
+            processingQueueRef.current.push({
+              text: data.transcribe_text_segment,
+              id: data.id || 'manual-fetch'
+            });
+            processNextInQueue();
+          } else {
+            console.log(`[Pipeline] Manual Fetch: No recent transcriptions found.`);
+          }
+        } catch (err) {
+          console.error("Manual fetch failed", err);
+        }
       }
     }
   };
@@ -539,76 +539,76 @@ export function OrbitApp() {
       shippedCharsRef.current = 0;
       if (meetingId) await orbitService.releaseSpeakerLock(meetingId, MY_USER_ID);
     } else {
-      if (!meetingId) return; 
+      if (!meetingId) return;
       const acquired = await orbitService.acquireSpeakerLock(meetingId, MY_USER_ID);
       if (acquired) {
         setMode('speaking');
 
         // Only start Web Speech if engine is webspeech
         if (transcriptionEngine === 'webspeech') {
-            try {
-               const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-               if (!SpeechRecognition) throw new Error("Speech recognition not supported.");
-    
-               const recognition = new SpeechRecognition();
-               recognition.continuous = true;
-               recognition.interimResults = true;
-               recognition.lang = selectedLanguageRef.current.code === 'auto' ? navigator.language : selectedLanguageRef.current.code; 
-           
-           const flushBuffer = () => {
-             const pending = sentenceBufferRef.current.substring(shippedCharsRef.current).trim();
-             if (pending) {
-               shipSegment(pending);
-               shippedCharsRef.current = sentenceBufferRef.current.length;
-             }
-           };
+          try {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (!SpeechRecognition) throw new Error("Speech recognition not supported.");
 
-           recognition.onresult = (event: any) => {
-             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-             
-             let currentFull = '';
-             for (let i = 0; i < event.results.length; ++i) {
-               currentFull += event.results[i][0].transcript;
-             }
-             sentenceBufferRef.current = currentFull;
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = selectedLanguageRef.current.code === 'auto' ? navigator.language : selectedLanguageRef.current.code;
 
-             const sentences = splitSentences(currentFull);
-             if (sentences.length > 1) {
+            const flushBuffer = () => {
+              const pending = sentenceBufferRef.current.substring(shippedCharsRef.current).trim();
+              if (pending) {
+                shipSegment(pending);
+                shippedCharsRef.current = sentenceBufferRef.current.length;
+              }
+            };
+
+            recognition.onresult = (event: any) => {
+              if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
+              let currentFull = '';
+              for (let i = 0; i < event.results.length; ++i) {
+                currentFull += event.results[i][0].transcript;
+              }
+              sentenceBufferRef.current = currentFull;
+
+              const sentences = splitSentences(currentFull);
+              if (sentences.length > 1) {
                 const completeSentences = sentences.slice(0, -1).join(' ');
                 const toShip = completeSentences.substring(shippedCharsRef.current).trim();
                 if (toShip) {
                   shipSegment(toShip);
                   shippedCharsRef.current = completeSentences.length;
                 }
-             }
+              }
 
-             const latestPartial = currentFull.substring(shippedCharsRef.current).trim();
-             setLivePartialText(latestPartial);
-             silenceTimerRef.current = setTimeout(flushBuffer, 1500);
-           };
+              const latestPartial = currentFull.substring(shippedCharsRef.current).trim();
+              setLivePartialText(latestPartial);
+              silenceTimerRef.current = setTimeout(flushBuffer, 1500);
+            };
 
-           recognition.onerror = (event: any) => {
-             if (event.error !== 'no-speech') {
+            recognition.onerror = (event: any) => {
+              if (event.error !== 'no-speech') {
                 reportError(`Speech recognition error: ${event.error}`);
                 setMode('idle');
-             }
-           };
+              }
+            };
 
-           recognition.onend = () => {
-             flushBuffer();
-           };
+            recognition.onend = () => {
+              flushBuffer();
+            };
 
-           recognition.start();
-           recognitionRef.current = recognition;
-           setMode('speaking');
-           setLastFinalText('');
-           sentenceBufferRef.current = '';
-           shippedCharsRef.current = 0;
-        } catch (e) {
-          reportError("Failed to start speech recognition", e);
-          setMode('idle');
-        }
-       } // End if webspeech
+            recognition.start();
+            recognitionRef.current = recognition;
+            setMode('speaking');
+            setLastFinalText('');
+            sentenceBufferRef.current = '';
+            shippedCharsRef.current = 0;
+          } catch (e) {
+            reportError("Failed to start speech recognition", e);
+            setMode('idle');
+          }
+        } // End if webspeech
       } else {
         reportError("Could not acquire speaker lock (someone else is speaking).");
       }
@@ -628,7 +628,7 @@ export function OrbitApp() {
     try {
       // 1. Check if meeting exists
       const { data: meeting } = await supabase.from('meetings').select('host_id').eq('meeting_id', mId).maybeSingle();
-      
+
       let role = 'attendee';
       if (!meeting) {
         // Create meeting, I am host
@@ -644,7 +644,7 @@ export function OrbitApp() {
         user_id: uId,
         role: role
       }, { onConflict: 'meeting_id,user_id' });
-      
+
     } catch (err) {
       console.error("Error joining meeting DB:", err);
     }
@@ -654,41 +654,41 @@ export function OrbitApp() {
 
   useEffect(() => {
     if (meetingId) {
-       const unsub = roomStateService.subscribeToRoom(meetingId, setRoomState);
+      const unsub = roomStateService.subscribeToRoom(meetingId, setRoomState);
 
-       // Subscribe to Transcripts
-       const channel = supabase.channel(`room:${meetingId}:transcripts`)
-         .on('postgres_changes', {
-           event: 'INSERT',
-           schema: 'public',
-           table: 'transcriptions',
-           filter: `meeting_id=eq.${meetingId}`
-         }, (payload: any) => {
-           if (payload.new.speaker_id !== MY_USER_ID) {
-             setLastFinalText(payload.new.transcribe_text_segment);
-             
-             if (modeRef.current === 'listening' && selectedLanguageRef.current.code !== 'auto') {
-                console.log(`[Pipeline] 1. Received Transcript Event: "${payload.new.transcribe_text_segment}" from ${payload.new.speaker_id}`);
-                processingQueueRef.current.push({ 
-                    text: payload.new.transcribe_text_segment,
-                    id: payload.new.id
-                });
-                console.log(`[Pipeline] 2. Queueing item. Queue length: ${processingQueueRef.current.length}`);
-                processNextInQueue();
-             }
+      // Subscribe to Transcripts
+      const channel = supabase.channel(`room:${meetingId}:transcripts`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'transcriptions',
+          filter: `meeting_id=eq.${meetingId}`
+        }, (payload: any) => {
+          if (payload.new.speaker_id !== MY_USER_ID) {
+            setLastFinalText(payload.new.transcribe_text_segment);
 
-             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-             silenceTimerRef.current = setTimeout(() => {
-               setLastFinalText('');
-             }, 5000);
-           }
-         })
-         .subscribe();
+            if (modeRef.current === 'listening' && selectedLanguageRef.current.code !== 'auto') {
+              console.log(`[Pipeline] 1. Received Transcript Event: "${payload.new.transcribe_text_segment}" from ${payload.new.speaker_id}`);
+              processingQueueRef.current.push({
+                text: payload.new.transcribe_text_segment,
+                id: payload.new.id
+              });
+              console.log(`[Pipeline] 2. Queueing item. Queue length: ${processingQueueRef.current.length}`);
+              processNextInQueue();
+            }
 
-       return () => {
-         unsub();
-         supabase.removeChannel(channel);
-       };
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = setTimeout(() => {
+              setLastFinalText('');
+            }, 5000);
+          }
+        })
+        .subscribe();
+
+      return () => {
+        unsub();
+        supabase.removeChannel(channel);
+      };
     }
   }, [meetingId, processNextInQueue]);
 
@@ -697,7 +697,7 @@ export function OrbitApp() {
   // Modified: Removed bg-black to allow transparency, added pointer-events-none to container but auto to children
   return (
     <div className={`absolute inset-0 flex flex-col items-center overflow-hidden pointer-events-none transition-all duration-300 ${isDockMinimized ? 'pt-0' : 'pt-[60px]'}`}>
-      <div className="pointer-events-auto w-full"> 
+      <div className="pointer-events-auto w-full">
         <TranslatorDock
           mode={mode}
           roomState={roomState}
@@ -707,7 +707,7 @@ export function OrbitApp() {
           onListenToggle={toggleListen}
           onLanguageChange={setSelectedLanguage}
           onRaiseHand={() => roomStateService.raiseHand(MY_USER_ID, MY_USER_NAME)}
-          
+
           transcriptionEngine={transcriptionEngine}
           onEngineChange={setTranscriptionEngine}
 
@@ -744,7 +744,7 @@ export function OrbitApp() {
                 const newId = initialMeetingId || `MEETING_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
                 sessionStorage.setItem('eburon_meeting_id', newId);
                 setMeetingId(newId);
-                
+
                 // Allow async join to happen in background
                 joinMeetingDB(newId, MY_USER_ID);
                 // Auto-start listening
@@ -761,7 +761,7 @@ export function OrbitApp() {
               sessionStorage.setItem('eburon_meeting_id', newId);
               setMeetingId(newId);
               // Optional: Reload to ensure clean state, or just state update is enough if useEffect handles re-subscription
-              window.location.reload(); 
+              window.location.reload();
             }
           }}
           meetingId={meetingId}
@@ -777,15 +777,15 @@ export function OrbitApp() {
           onMinimizeToggle={() => setIsDockMinimized(!isDockMinimized)}
         />
       </div>
-      
+
       <div className="pointer-events-auto w-full">
         <ErrorBanner message={errorMessage} onClear={() => setErrorMessage('')} />
       </div>
-      
+
       {/* Bottom Transcription Area - 14px font, centered, 75px from bottom */}
       <div className="fixed bottom-[75px] left-1/2 -translate-x-1/2 w-full max-w-4xl px-12 z-40 pointer-events-none">
         <div className="text-center">
-           {sourceDisplayText && (
+          {sourceDisplayText && (
             <p className="text-[28px] font-bold tracking-tight text-white drop-shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300 px-6 py-4 rounded-xl bg-black/40 backdrop-blur-md">
               {sourceDisplayText}
             </p>
@@ -796,7 +796,7 @@ export function OrbitApp() {
             </p>
           )}
           {!sourceDisplayText && !translatedStreamText && mode === 'speaking' && (
-             <p className="text-[16px] text-white/50 animate-pulse font-medium">Listening...</p>
+            <p className="text-[16px] text-white/50 animate-pulse font-medium">Listening...</p>
           )}
 
         </div>

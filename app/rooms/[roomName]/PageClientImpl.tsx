@@ -4,7 +4,7 @@ import React from 'react';
 import { decodePassphrase } from '@/lib/client-utils';
 
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/orbit/services/supabaseClient';
+import { dbClient as supabase } from '@/lib/orbit/services/dbClient';
 import { useAuth } from '@/components/AuthProvider';
 import { RecordingIndicator } from '@/lib/RecordingIndicator';
 import { OrbitIcon } from '@/lib/orbit/components/OrbitTranslatorVertical';
@@ -14,8 +14,9 @@ import { ParticipantsPanel } from '@/lib/ParticipantsPanel';
 import { OrbitTranslatorPanel } from '@/lib/orbit/components/OrbitTranslatorPanel';
 import { LiveCaptions } from '@/lib/LiveCaptions';
 import { CustomPreJoin } from '@/lib/CustomPreJoin';
-import { useInkLive } from '@/lib/orbit/hooks/useInkLive';
-import { useDeepgramLive } from '@/lib/orbit/hooks/useDeepgramLive';
+import { LoginOverlay } from '@/components/LoginOverlay';
+import { useSpeechStream } from '@/lib/orbit/hooks/useSpeechStream';
+import { useVoiceSocket } from '@/lib/orbit/hooks/useVoiceSocket';
 import { useWebSpeech } from '@/lib/orbit/hooks/useWebSpeech';
 import { ensureRoomState } from '@/lib/orbit/services/orbitService';
 import { LANGUAGES, RoomState, STTEngine, TranslationEngine } from '@/lib/orbit/types';
@@ -650,8 +651,8 @@ function RoomInner(props: {
   const [sttEngine, setSttEngine] = React.useState<STTEngine>('eburon-ink');
   const [translationEngine, setTranslationEngine] = React.useState<TranslationEngine>('eburon-gemini');
 
-  const inkSTT = useInkLive({ model: 'ink-whisper', language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
-  const deepgramSTT = useDeepgramLive({ model: 'nova-2', language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
+  const inkSTT = useSpeechStream({ model: 'ink-whisper', language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
+  const deepgramSTT = useVoiceSocket({ model: 'nova-2', language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
   const webSpeechSTT = useWebSpeech({ language: sourceLanguage === 'multi' ? 'en' : sourceLanguage });
 
   const activeSTT = React.useMemo(() => {
@@ -1056,6 +1057,7 @@ function RoomInner(props: {
         <EburonControlBar onParticipantsToggle={() => handleSidebarPanelToggle('participants')} onChatToggle={() => handleSidebarPanelToggle('chat')} onSettingsToggle={() => handleSidebarPanelToggle('settings')} onOrbitToggle={() => handleSidebarPanelToggle('orbit')} onGridToggle={() => setIsGridView(!isGridView)} isGridView={isGridView} onTranscriptionToggle={handleTranscriptionToggle} isParticipantsOpen={!sidebarCollapsed && activeSidebarPanel === 'participants'} isChatOpen={!sidebarCollapsed && activeSidebarPanel === 'chat'} isSettingsOpen={!sidebarCollapsed && activeSidebarPanel === 'settings'} isOrbitOpen={!sidebarCollapsed && activeSidebarPanel === 'orbit'} isTranscriptionOpen={isTranscriptionEnabled} isAppMuted={isAppMuted} onAppMuteToggle={setIsAppMuted} roomState={roomState} userId={user?.id} audioCaptureOptions={audioCaptureOptions} onCaptionToggle={() => setIsTranscriptionEnabled(!isTranscriptionEnabled)} isCaptionOpen={isTranscriptionEnabled} onLanguageChange={setTargetLanguage} orbitMicState={orbitMicState} />
         <RecordingIndicator />
       </LayoutContextProvider>
+      <LoginOverlay />
     </div>
   );
 }

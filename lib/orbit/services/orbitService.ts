@@ -1,5 +1,5 @@
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
+import { dbClient as supabase } from './dbClient';
 
 export interface RoomState {
   activeSpeakerUserId: string | null;
