@@ -1,6 +1,6 @@
 :root {
   /* Typography */
-  --font-sans: var(--font-plus-jakarta), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, var(--font-plus-jakarta), 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   
   /* Palette - Success Class Theme */
   --gold: #D4AF37;

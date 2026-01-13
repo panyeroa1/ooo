@@ -19,7 +19,7 @@ export async function POST(request: Request) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: "gemini-3-flash-preview:cloud", // Upgraded to user's new model
-            prompt: `Translate the following text to ${targetLang}. Output ONLY the translated text.\n\nText: ${text}`,
+            prompt: `Translate the following text to ${targetLang}. Output ONLY the translated text. Do not add commentary or omit content.\n\nText: ${text}`,
             stream: false
           })
         });
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             model: "deepseek-chat",
             messages: [
-              { role: "system", content: "You are a professional translator. Output ONLY the translated text." },
+              { role: "system", content: "You are a professional translator. Output ONLY the translated text. Do not add commentary or omit content." },
               { role: "user", content: `Translate to ${targetLang}:\n\n${text}` }
             ],
             stream: false
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         contents: [{
           parts: [{ 
-            text: `Translate the following text to ${targetLang}. Output ONLY the translated text.\n\nText: ${text}` 
+            text: `Translate the following text to ${targetLang}. Output ONLY the translated text. Do not add commentary or omit content.\n\nText: ${text}` 
           }]
         }],
         generationConfig: { temperature: 0.1 }

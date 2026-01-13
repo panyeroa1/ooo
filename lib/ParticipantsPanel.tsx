@@ -15,6 +15,7 @@ import {
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import styles from '../styles/Eburon.module.css';
+import { LANGUAGES } from '@/lib/orbit/types';
 
 // Icons
 const MicIcon = () => (
@@ -109,6 +110,24 @@ const ChatIcon = () => (
   </svg>
 );
 
+const LanguageIcon = ({ size = 14 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M2.5 12h19" />
+    <path d="M12 3a12 12 0 0 1 0 18" />
+    <path d="M12 3a12 12 0 0 0 0 18" />
+  </svg>
+);
+
+const AgentIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 10.5h.01" />
+    <path d="M16 10.5h.01" />
+    <path d="M8.5 15c1.2 1 5.8 1 7 0" />
+  </svg>
+);
+
 // ... imports
 import { useMeetingFloor } from '@/lib/useMeetingFloor';
 
@@ -124,6 +143,10 @@ export function ParticipantsPanel({
   onRejectParticipant,
   admittedIds,
   hostIdentity,
+  isTranslationAgentEnabled,
+  onTranslationAgentToggle,
+  translationTargetLanguage,
+  onTranslationTargetLanguageChange,
 }: {
   alias?: string;
   onDirectMessage?: (participantIdentity: string, participantName: string) => void;
@@ -134,6 +157,10 @@ export function ParticipantsPanel({
   onRejectParticipant: (identity: string) => void;
   admittedIds: Set<string>;
   hostIdentity?: string;
+  isTranslationAgentEnabled: boolean;
+  onTranslationAgentToggle: (enabled: boolean) => void;
+  translationTargetLanguage: string;
+  onTranslationTargetLanguageChange: (language: string) => void;
 }) {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
@@ -291,6 +318,47 @@ export function ParticipantsPanel({
         </div>
       ) : (
         <div className={styles.participantsList}>
+          <div className={`${styles.participantItem} ${styles.agentParticipant}`}>
+            <div className={`${styles.participantAvatar} ${styles.agentAvatar}`}>
+              <AgentIcon />
+            </div>
+            <div className={styles.participantInfo}>
+              <div className={styles.participantNameRow}>
+                <span className={styles.participantName}>Orbit Translator</span>
+                <span className={styles.agentBadge}>AGENT</span>
+              </div>
+              <div className={styles.agentMeta}>
+                <span className={styles.agentStatus}>
+                  {isTranslationAgentEnabled ? 'Listening' : 'Paused'}
+                </span>
+                <div className={styles.agentLanguageRow}>
+                  <LanguageIcon size={12} />
+                  <select
+                    value={translationTargetLanguage}
+                    onChange={(e) => onTranslationTargetLanguageChange(e.target.value)}
+                    className={`${styles.sidebarSelect} ${styles.agentSelect}`}
+                    aria-label="Agent target language"
+                  >
+                    {LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className={styles.participantControls}>
+              <button
+                className={`${styles.participantControl} ${isTranslationAgentEnabled ? styles.agentControlActive : ''}`}
+                onClick={() => onTranslationAgentToggle(!isTranslationAgentEnabled)}
+                title={isTranslationAgentEnabled ? 'Pause translator' : 'Start translator'}
+                type="button"
+              >
+                <LanguageIcon size={14} />
+              </button>
+            </div>
+          </div>
           {waitingList.length > 0 && (
             <div className={styles.sidebarCard}>
               <div className={styles.sidebarCardText}>

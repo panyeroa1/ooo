@@ -858,6 +858,59 @@
   transition: all 0.15s ease;
 }
 
+.agentParticipant {
+  border-color: rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12), rgba(20, 20, 24, 0.7));
+}
+
+.agentAvatar {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.8), rgba(180, 140, 40, 0.7));
+  color: #0f0f10;
+}
+
+.agentBadge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+  background: rgba(212, 175, 55, 0.2);
+  color: #fbbf24;
+}
+
+.agentMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.agentStatus {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.agentLanguageRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.agentSelect {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.65rem;
+  max-width: 180px;
+}
+
+.agentControlActive {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #fbbf24;
+}
+
 .participantControl:hover {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.16);

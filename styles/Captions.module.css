@@ -12,7 +12,7 @@
 
 .captionsText {
   color: #00FF00; /* Lime green */
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 22px;
   line-height: 1.2;
   text-align: left;

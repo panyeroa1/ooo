@@ -2,13 +2,20 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRoomContext, useLocalParticipant, useRemoteParticipants } from '@livekit/components-react';
-import { RoomEvent, DataPacket_Kind, RemoteParticipant, Track } from 'livekit-client';
+import { RoomEvent, RemoteParticipant } from 'livekit-client';
 
 interface TranslationMessage {
   type: 'orbit_translation';
   text: string;
   sourceLanguage?: string;
   targetLanguage?: string;
+  timestamp: number;
+}
+
+interface TranscriptMessage {
+  type: 'orbit_transcript';
+  text: string;
+  sourceLanguage?: string;
   timestamp: number;
 }
 
@@ -22,6 +29,7 @@ interface UseOrbitTranslatorOptions {
 interface UseOrbitTranslatorReturn {
   // Outbound
   sendTranslation: (text: string) => Promise<void>;
+  sendTranscript: (text: string, sourceLanguage?: string) => Promise<void>;
   
   // Inbound
   incomingTranslations: Array<{ participantId: string; text: string; timestamp: number }>;
@@ -57,8 +65,10 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
   const isSpeakingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const duckStoreRef = useRef<Map<HTMLMediaElement, number>>(new Map());
+  const baselineDuckStoreRef = useRef<Map<HTMLMediaElement, number>>(new Map());
 
   const DUCK_LEVEL = 0.25; // 25% volume during TTS
+  const BASELINE_DUCK_LEVEL = 0.2; // Lower remote audio while translator is active
 
   // Audio Context and Analyser for visualization
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -111,75 +121,67 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     }
   }, []);
 
+  const applyBaselineDuck = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const elements = Array.from(document.querySelectorAll('audio[data-lk-source="microphone"]')) as HTMLMediaElement[];
+    elements.forEach(el => {
+      if (!baselineDuckStoreRef.current.has(el)) {
+        baselineDuckStoreRef.current.set(el, el.volume);
+      }
+      el.volume = Math.min(el.volume, BASELINE_DUCK_LEVEL);
+    });
+  }, []);
+
+  const restoreBaselineDuck = useCallback(() => {
+    baselineDuckStoreRef.current.forEach((originalVol, el) => {
+      try {
+        el.volume = originalVol;
+      } catch (_) {}
+    });
+    baselineDuckStoreRef.current.clear();
+  }, []);
+
   // Mute raw audio from a specific participant
   const muteRawAudio = useCallback((participantId: string) => {
     setMutedParticipants(prev => {
       if (prev.has(participantId)) return prev;
-      const participant = remoteParticipants.find(p => p.identity === participantId);
-      if (participant) {
-        const audioTrack = participant.getTrackPublication(Track.Source.Microphone);
-        if (audioTrack) {
-          audioTrack.setEnabled(false);
-        }
-      }
-      return new Set(prev).add(participantId);
+      const next = new Set(prev);
+      next.add(participantId);
+      return next;
     });
-  }, [remoteParticipants]);
+    applyBaselineDuck();
+  }, [applyBaselineDuck]);
 
   // Unmute raw audio from a specific participant
   const unmuteRawAudio = useCallback((participantId: string) => {
     setMutedParticipants(prev => {
       if (!prev.has(participantId)) return prev;
-      const participant = remoteParticipants.find(p => p.identity === participantId);
-      if (participant) {
-        const audioTrack = participant.getTrackPublication(Track.Source.Microphone);
-        if (audioTrack) {
-          audioTrack.setEnabled(true);
-        }
-      }
       const next = new Set(prev);
       next.delete(participantId);
+      if (next.size === 0) {
+        restoreBaselineDuck();
+      }
       return next;
     });
-  }, [remoteParticipants]);
+  }, [restoreBaselineDuck]);
 
   // Auto-mute all remote participants when translation is enabled (unless hearRawAudio is true)
   useEffect(() => {
     if (!options.enabled) {
-      // Restore all muted participants
-      mutedParticipants.forEach(id => {
-        const participant = remoteParticipants.find(p => p.identity === id);
-        if (participant) {
-          const audioTrack = participant.getTrackPublication(Track.Source.Microphone);
-          if (audioTrack) {
-            audioTrack.setEnabled(true);
-          }
-        }
-      });
+      restoreBaselineDuck();
       setMutedParticipants(new Set());
       return;
     }
 
     if (options.hearRawAudio) {
-       // Restore all muted participants if hearRawAudio was just toggled ON
-       mutedParticipants.forEach(id => {
-         const participant = remoteParticipants.find(p => p.identity === id);
-         if (participant) {
-           const audioTrack = participant.getTrackPublication(Track.Source.Microphone);
-           if (audioTrack) {
-             audioTrack.setEnabled(true);
-           }
-         }
-       });
-       setMutedParticipants(new Set());
-       return;
+      restoreBaselineDuck();
+      setMutedParticipants(new Set());
+      return;
     }
 
-    // Mute all remote participants
-    remoteParticipants.forEach(participant => {
-      muteRawAudio(participant.identity);
-    });
-  }, [options.enabled, options.hearRawAudio, remoteParticipants, muteRawAudio]);
+    applyBaselineDuck();
+    setMutedParticipants(new Set(remoteParticipants.map(p => p.identity)));
+  }, [options.enabled, options.hearRawAudio, remoteParticipants, applyBaselineDuck, restoreBaselineDuck]);
 
   // Duck all other audio/video elements to 25%
   const duckOtherMedia = useCallback(() => {
@@ -256,6 +258,45 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     }
   }, [duckOtherMedia, restoreOtherMedia, resumeAudioContext]);
 
+  const translateIncomingTranscript = useCallback(async (text: string, participantId: string, timestamp?: number) => {
+    if (!text.trim()) return;
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const translateResponse = await fetch('/api/orbit/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLang: options.targetLanguage })
+      });
+
+      if (!translateResponse.ok) {
+        throw new Error('Translation failed');
+      }
+
+      const { translation } = await translateResponse.json();
+      const resolvedText = (translation || text).trim();
+      const resolvedTimestamp = timestamp ?? Date.now();
+
+      setIncomingTranslations(prev => [
+        ...prev.slice(-50),
+        {
+          participantId,
+          text: resolvedText,
+          timestamp: resolvedTimestamp
+        }
+      ]);
+
+      ttsQueueRef.current.push({ text: resolvedText, participantId });
+      processTTSQueue();
+    } catch (e: any) {
+      setError(e.message || 'Translation failed');
+      console.error('[Orbit] Incoming translation failed:', e);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [options.targetLanguage, processTTSQueue]);
+
   // Send translation to all participants via Data Channel (only if source speaker)
   const sendTranslation = useCallback(async (text: string) => {
     if (!localParticipant || !text.trim()) return;
@@ -297,6 +338,26 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     }
   }, [localParticipant, options.targetLanguage]);
 
+  // Send raw transcript to all participants (for per-user translation)
+  const sendTranscript = useCallback(async (text: string, sourceLanguage?: string) => {
+    if (!localParticipant || !text.trim()) return;
+    if (!options.isSourceSpeaker) return;
+
+    try {
+      const message: TranscriptMessage = {
+        type: 'orbit_transcript',
+        text: text.trim(),
+        sourceLanguage,
+        timestamp: Date.now()
+      };
+
+      const payload = new TextEncoder().encode(JSON.stringify(message));
+      await localParticipant.publishData(payload, { reliable: true });
+    } catch (e) {
+      console.error('[Orbit] Send transcript failed:', e);
+    }
+  }, [localParticipant, options.isSourceSpeaker]);
+
   // Listen for incoming translations
   useEffect(() => {
     if (!room || !options.enabled) return;
@@ -313,7 +374,15 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
       try {
         const data = JSON.parse(new TextDecoder().decode(payload));
         
+        if (data.type === 'orbit_transcript' && data.text) {
+          translateIncomingTranscript(data.text, participant.identity, data.timestamp);
+          return;
+        }
+
         if (data.type === 'orbit_translation' && data.text) {
+          if (data.targetLanguage && data.targetLanguage !== options.targetLanguage) {
+            return;
+          }
           // Add to incoming translations list
           setIncomingTranslations(prev => [
             ...prev.slice(-50), // Keep last 50
@@ -338,10 +407,11 @@ export function useOrbitTranslator(options: UseOrbitTranslatorOptions): UseOrbit
     return () => {
       room.off(RoomEvent.DataReceived, handleDataReceived);
     };
-  }, [room, options.enabled, localParticipant, processTTSQueue]);
+  }, [room, options.enabled, options.targetLanguage, localParticipant, processTTSQueue, translateIncomingTranscript]);
 
   return {
     sendTranslation,
+    sendTranscript,
     incomingTranslations,
     isProcessing,
     error,

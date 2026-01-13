@@ -661,11 +661,12 @@ function RoomInner(props: {
   }, [sttEngine, inkSTT, deepgramSTT, webSpeechSTT]);
 
   const orbitMicState = useOrbitMic({ language: sourceLanguage, passive: true });
+  const isActiveSpeaker = roomState?.activeSpeaker?.userId === user?.id;
   const translator = useOrbitTranslator({
     targetLanguage,
     enabled: isListening,
     hearRawAudio,
-    isSourceSpeaker: roomState?.activeSpeaker?.userId === user?.id
+    isSourceSpeaker: isActiveSpeaker
   });
 
   // Start/Stop STT based on translation/transcription needs OR Broadcasting
@@ -681,7 +682,9 @@ function RoomInner(props: {
       return;
     }
 
-    if (isListening || isTranscriptionEnabled || orbitMicState.isRecording) {
+    const shouldCaptureSpeech = isTranscriptionEnabled || orbitMicState.isRecording || (isListening && isActiveSpeaker);
+
+    if (shouldCaptureSpeech) {
       if (!activeSTT.isListening) {
         activeSTT.start(activeDeviceId);
       }
@@ -694,6 +697,7 @@ function RoomInner(props: {
     isListening,
     isTranscriptionEnabled,
     orbitMicState.isRecording,
+    isActiveSpeaker,
     sttEngine,
     activeSTT,
     inkSTT,
@@ -707,8 +711,9 @@ function RoomInner(props: {
   // Feed transcription into translator AND update RTDB
   React.useEffect(() => {
     // 1. Translation: Only send if we are BROADCASTING AND we have the floor
-    if (orbitMicState.isRecording && roomState?.activeSpeaker?.userId === user?.id && activeSTT.isFinal && activeSTT.transcript?.trim()) {
-      translator.sendTranslation(activeSTT.transcript);
+    const shouldBroadcastTranscript = (isListening || orbitMicState.isRecording || isTranscriptionEnabled) && isActiveSpeaker;
+    if (shouldBroadcastTranscript && activeSTT.isFinal && activeSTT.transcript?.trim()) {
+      translator.sendTranscript(activeSTT.transcript, sourceLanguage);
     }
 
     // 2. RTDB Sync: Update transcription in RTDB if broadcasting
@@ -725,7 +730,7 @@ function RoomInner(props: {
         });
       });
     }
-  }, [orbitMicState.isRecording, roomState?.activeSpeaker?.userId, user?.id, activeSTT.isFinal, activeSTT.transcript, translator]);
+  }, [orbitMicState.isRecording, isListening, isTranscriptionEnabled, isActiveSpeaker, sourceLanguage, activeSTT.isFinal, activeSTT.transcript, translator]);
 
   const audioCaptureOptions = React.useMemo<AudioCaptureOptions>(() => {
     const activeDeviceId = lkRoom.getActiveDevice('audioinput') ?? props.userChoices.audioDeviceId ?? undefined;
@@ -910,7 +915,10 @@ function RoomInner(props: {
     });
 
     if (e2eeSetupComplete) {
-      lkRoom.connect(props.connectionDetails.serverUrl, props.connectionDetails.participantToken, { autoSubscribe: true })
+      const token = process.env.NEXT_PUBLIC_LIVEKIT_TOKEN || props.connectionDetails.participantToken;
+      const url = process.env.NEXT_PUBLIC_LIVEKIT_URL || props.connectionDetails.serverUrl;
+
+      lkRoom.connect(url, token, { autoSubscribe: true })
         .then(() => {
           if (props.userChoices.videoEnabled) lkRoom.localParticipant.setCameraEnabled(true);
           if (props.userChoices.audioEnabled) lkRoom.localParticipant.setMicrophoneEnabled(true, audioCaptureOptions);
@@ -951,7 +959,22 @@ function RoomInner(props: {
   const renderSidebarPanel = () => {
     if (sidebarCollapsed) return null;
     switch (activeSidebarPanel) {
-      case 'participants': return <ParticipantsPanel alias="Participants" waitingRoomEnabled={waitingRoomEnabled} onWaitingRoomToggle={setWaitingRoomEnabled} waitingList={waitingList} onAdmitParticipant={admitParticipant} onRejectParticipant={rejectParticipant} admittedIds={admittedIds} hostIdentity={hostId || undefined} />;
+      case 'participants': return (
+        <ParticipantsPanel
+          alias="Participants"
+          waitingRoomEnabled={waitingRoomEnabled}
+          onWaitingRoomToggle={setWaitingRoomEnabled}
+          waitingList={waitingList}
+          onAdmitParticipant={admitParticipant}
+          onRejectParticipant={rejectParticipant}
+          admittedIds={admittedIds}
+          hostIdentity={hostId || undefined}
+          isTranslationAgentEnabled={isListening}
+          onTranslationAgentToggle={setIsListening}
+          translationTargetLanguage={targetLanguage}
+          onTranslationTargetLanguageChange={setTargetLanguage}
+        />
+      );
       case 'chat': return <ChatPanel />;
       case 'settings': return <SettingsPanel voiceFocusEnabled={voiceFocusEnabled} onVoiceFocusChange={setVoiceFocusEnabled} vadEnabled={vadEnabled} onVadChange={setVadEnabled} noiseSuppressionEnabled={noiseSuppressionEnabled} onNoiseSuppressionChange={setNoiseSuppressionEnabled} echoCancellationEnabled={echoCancellationEnabled} onEchoCancellationChange={setEchoCancellationEnabled} autoGainEnabled={autoGainEnabled} onAutoGainChange={setAutoGainEnabled} />;
       case 'orbit': {

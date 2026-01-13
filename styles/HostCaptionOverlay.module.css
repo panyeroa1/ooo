@@ -27,7 +27,7 @@
   padding: 8px 16px;
   border-radius: 8px;
   color: #ffffff;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: min(4vw, 24px);
   font-weight: 500;
   line-height: 1.4;
