@@ -701,6 +701,7 @@ async function initSourceViz(stream) {
     drawViz(ui.sourceViz, inputAnalyser, '#10b981');
 }
 
+// === TTS ENGINES CONFIG ===
 const CARTESIA_KEY = "sk_car_JmdGRhBt1ocwhqmrxy2gaa";
 const CARTESIA_CFG = {
   endpoint: "https://api.cartesia.ai/tts/bytes",
@@ -712,8 +713,6 @@ const CARTESIA_CFG = {
   generation_config: { speed: 1.2, volume: 1.0 }
 };
 
-let ttsQueue = [];
-let ttsBusy = false;
 const ttsAudio = document.getElementById("tts");
 
 document.getElementById('speedRange').oninput = e => {
@@ -745,43 +744,104 @@ window.translateText = async function(text, targetCode) {
     }
 };
 
+// ===========================================
+//  IMPROVED CONTINUOUS TTS PIPELINE
+// ===========================================
+
+let ttsTextQueue = [];   // Stores { text, lang }
+let ttsAudioQueue = [];  // Stores { audioUrl }
+let isFetching = false;  // Is API busy?
+let isPlaying = false;   // Is Speaker busy?
+
 window.enqueueTTS = function(text, lang) {
-    // With buffering, we are already receiving larger chunks, but let's split just in case
+    // 1. Add text to queue
     const parts = text.match(/[^.!?]+[.!?]*/g) || [text];
-    parts.forEach(p => ttsQueue.push({ text: p, lang }));
-    processTTS();
+    parts.forEach(p => ttsTextQueue.push({ text: p, lang }));
+    
+    // 2. Start fetching immediately (don't wait for playback)
+    processTextQueue();
 }
 
-async function processTTS() {
-    if (ttsBusy || !ttsQueue.length) return;
-    ttsBusy = true;
+// FETCH LOOP: Takes Text -> Gets Audio -> Puts in Audio Queue
+async function processTextQueue() {
+    if (isFetching || ttsTextQueue.length === 0) return;
+    isFetching = true;
+
+    const { text, lang } = ttsTextQueue.shift();
+
+    try {
+        // UI: Show we are working
+        ui.recvText.textContent = `Processing (Cartesia)...`;
+        ui.recvDot.className = "dot receiving";
+        
+        const audioUrl = await fetchCartesiaTTS(text);
+
+        if (audioUrl) {
+            // Push ready audio to playback queue
+            ttsAudioQueue.push(audioUrl);
+            // Try to trigger playback immediately (in case player is idle)
+            processAudioQueue();
+        }
+
+    } catch(e) { 
+        console.error("TTS Fetch Error", e); 
+    }
+
+    isFetching = false;
     
+    // Immediately fetch next text if available
+    if(ttsTextQueue.length > 0) {
+        processTextQueue();
+    } else if(!isPlaying) {
+        // Only reset UI if nothing is playing either
+        ui.recvText.textContent = "Receiver Idle";
+        ui.recvDot.className = "dot active";
+    }
+}
+
+// --- PROVIDER: CARTESIA ---
+async function fetchCartesiaTTS(text) {
+    const res = await fetch(CARTESIA_CFG.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": CARTESIA_KEY, "Cartesia-Version": CARTESIA_CFG.version },
+        body: JSON.stringify({
+            model_id: CARTESIA_CFG.model_id, transcript: text,
+            voice: { mode: "id", id: "9c7e6604-52c6-424a-9f9f-2c4ad89f3bb9" },
+            output_format: CARTESIA_CFG.output_primary, generation_config: CARTESIA_CFG.generation_config
+        })
+    });
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+}
+
+// PLAYBACK LOOP: Takes Audio -> Plays -> Triggers Next (0ms Gap)
+async function processAudioQueue() {
+    if (isPlaying || ttsAudioQueue.length === 0) return;
+    isPlaying = true;
+
+    // UI Updates
     ui.recvText.textContent = "Speaking...";
     ui.recvDot.className = "dot receiving";
     if (recvCtx && recvCtx.state === 'suspended') recvCtx.resume();
 
-    const { text, lang } = ttsQueue.shift();
+    const audioUrl = ttsAudioQueue.shift();
+    ttsAudio.src = audioUrl;
+
     try {
-        const res = await fetch(CARTESIA_CFG.endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-API-Key": CARTESIA_KEY, "Cartesia-Version": CARTESIA_CFG.version },
-            body: JSON.stringify({
-                model_id: CARTESIA_CFG.model_id, transcript: text,
-                voice: { mode: "id", id: "9c7e6604-52c6-424a-9f9f-2c4ad89f3bb9" },
-                output_format: CARTESIA_CFG.output_primary, generation_config: CARTESIA_CFG.generation_config
-            })
-        });
-        const blob = await res.blob();
-        ttsAudio.src = URL.createObjectURL(blob);
         await ttsAudio.play();
-        await new Promise(r => { ttsAudio.onended = r; setTimeout(r, 10000); });
-    } catch(e) { console.error(e); }
-    
-    ui.recvText.textContent = "Receiver Idle";
-    ui.recvDot.className = "dot active";
-    ttsBusy = false;
-    processTTS();
+        
+        // Wait for end, then immediately play next without timeout (0ms gap)
+        ttsAudio.onended = () => {
+            isPlaying = false;
+            processAudioQueue(); // Immediate Next!
+        };
+    } catch (e) {
+        console.error("Playback Error", e);
+        isPlaying = false;
+        processAudioQueue();
+    }
 }
+
 
 // --- DEEPGRAM CONFIGURATION & BUFFERING LOGIC ---
 const DEEPGRAM_KEY = "52c4137114e2f86597c78326be7b512daae7f266";
@@ -792,7 +852,7 @@ let listening = false;
 // === Buffering State Variables ===
 let broadcastBuffer = "";
 let flushTimeout = null;
-const FLUSH_DELAY_MS = 2000; // Time to wait for a second sentence before forcing send
+const FLUSH_DELAY_MS = 2500; // Increased to 2.5s for better "thought gathering"
 
 async function startBroadcasting() {
     if (listening) return stopBroadcasting();
@@ -861,14 +921,14 @@ async function startBroadcasting() {
                     const sentenceMatches = broadcastBuffer.match(/[.!?]+(\s|$)/g);
                     const sentenceCount = sentenceMatches ? sentenceMatches.length : 0;
 
-                    if (sentenceCount >= 2) {
-                        // We have 2+ sentences, ship immediately!
+                    if (sentenceCount >= 3) {
+                        // We have 3+ sentences, ship immediately!
                         if (window.broadcastTranslation) {
                             window.broadcastTranslation(broadcastBuffer, null, ui.srcLang.value || "auto", null);
                         }
                         broadcastBuffer = ""; // Reset buffer
                     } else {
-                        // Less than 2 sentences, wait for FLUSH_DELAY_MS
+                        // Less than 3 sentences, wait for FLUSH_DELAY_MS
                         flushTimeout = setTimeout(() => {
                             if (broadcastBuffer.trim().length > 0) {
                                 if (window.broadcastTranslation) {
@@ -1174,6 +1234,7 @@ const LANGUAGES = [
   { code: 'vec', name: 'Venetian' },
   { code: 'vi', name: 'Vietnamese', flag: '🇻🇳' },
   { code: 'war', name: 'Waray' },
+  { code: 'cy', name: 'Welsh', flag: '🏴󠁧󠁢󠁷󠁬󠁳󠁿' },
   { code: 'wo', name: 'Wolof', flag: '🇸🇳' },
   { code: 'xh', name: 'Xhosa', flag: '🇿🇦' },
   { code: 'sah', name: 'Yakut' },
